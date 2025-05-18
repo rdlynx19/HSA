@@ -1,0 +1,151 @@
+<mujoco>
+  <!-- ============================================= -->
+  <!-- 1. SIMULATION OPTIONS -->
+  <!-- ============================================= -->
+  <option timestep="0.001">
+    <flag gravity="enable"/>
+  </option>
+  
+  <!-- ============================================= -->
+  <!-- 2. ASSETS (UNCHANGED - KEEPING YOUR VISUALS) -->
+  <!-- ============================================= -->
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" rgb1="0.8 0.8 0.8" rgb2="0.5 0.5 0.5" width="300" height="300" mark="edge" markrgb="0.2 0.2 0.2"/>
+    <material name="gridmat" texture="grid" texrepeat="5 5" reflectance="0.1"/>
+    <hfield name="terrain" size="5 5 0.5 0.01" nrow="50" ncol="50"/>
+  </asset>
+
+  <!-- ============================================= -->
+  <!-- 3. VISUAL SETTINGS (UNCHANGED) -->
+  <!-- ============================================= -->
+  <visual>
+    <global offwidth="800" offheight="800"/>
+    <quality shadowsize="2048"/>
+    <headlight ambient="0.3 0.3 0.3" diffuse="0.7 0.7 0.7" specular="0.1 0.1 0.1"/>
+  </visual>
+
+  <!-- ============================================= -->
+  <!-- 4. WORLD BODY -->
+  <!-- ============================================= -->
+  <worldbody>
+    <!-- Ground plane -->
+    <geom type="hfield" hfield="terrain" material="gridmat" friction="1 0.5 0.1"/>
+    
+    <!-- Lighting -->
+    <light name="light" pos="0 0 3" dir="0 0 -1" directional="true" castshadow="true"/>
+    
+    <!-- Camera -->
+    <camera name="fixed" pos="1.5 1.5 0.5" xyaxes="1 0 0 0 1 0"/>
+
+    <!-- Block 1 (FIXED in place using weld) -->
+    <body name="block1" pos="0 0 0.1">
+      <geom type="box" size="0.05 0.1 0.1" rgba="1 0 0 1" mass="10.0"/>
+      <!-- Connection sites -->
+      <site name="site1a" pos="0.05 0.05 0.05"/>
+      <site name="site2a" pos="0.05 -0.05 0.05"/>
+      <site name="site3a" pos="0.05 0.05 -0.05"/>
+      <site name="site4a" pos="0.05 -0.05 -0.05"/>
+    </body>
+
+   <!-- Block 2: base has free joint, twist body is actuated -->
+<body name="block2_base" pos="0.25 0 0.1">
+  <joint name="free_joint" type="free"/>
+  <geom type="sphere" size="0.001" mass="0.05" rgba="1 1 1 0"/>
+
+  <body name="block2_twist" pos="0 0 0">
+    <joint name="twist_joint" type="hinge" axis="1 0 0"/>
+
+    <geom type="box" size="0.05 0.1 0.1" rgba="0 0 1 1" mass="10.0"/>
+    
+    <!-- Connection sites -->
+    <site name="site1b" pos="-0.05 0.05 0.05"/>
+    <site name="site2b" pos="-0.05 -0.05 0.05"/>
+    <site name="site3b" pos="-0.05 0.05 -0.05"/>
+    <site name="site4b" pos="-0.05 -0.05 -0.05"/>
+  </body>
+</body>
+
+    <!-- Intermediate sites -->
+    <body name="mid1" pos="0.125 0.05 0.15">
+      <joint type="free"/>
+      <geom type="sphere" size="0.01" mass="0.001" rgba="1 1 0 1"/>
+      <site name="site1_mid" pos="0 0 0"/>
+    </body>
+
+    <body name="mid2" pos="0.125 -0.05 0.15">
+      <joint type="free"/>
+      <geom type="sphere" size="0.01" mass="0.001" rgba="1 1 0 1"/>
+      <site name="site2_mid" pos="0 0 0"/>
+    </body>
+
+    <body name="mid3" pos="0.125 0.05 0.05">
+      <joint type="free"/>
+      <geom type="sphere" size="0.01" mass="0.001" rgba="1 1 0 1"/>
+      <site name="site3_mid" pos="0 0 0"/>
+    </body>
+
+    <body name="mid4" pos="0.125 -0.05 0.05">
+      <joint type="free"/>
+      <geom type="sphere" size="0.01" mass="0.001" rgba="1 1 0 1"/>
+      <site name="site4_mid" pos="0 0 0"/>
+    </body>
+  </worldbody>
+
+  <!-- ============================================= -->
+  <!-- 5. SPRING CONNECTIONS (UNCHANGED) -->
+  <!-- ============================================= -->
+ <tendon>
+  <!-- Pair 1 -->
+  <spatial name="spring1a" width="0.015" rgba="0 1 0 1" stiffness="0.1" damping="5" >
+    <site site="site1a"/>
+    <site site="site1_mid"/>
+  </spatial>
+  <spatial name="spring1b" width="0.015" rgba="1 1 0 1" stiffness="0.1" damping="5">
+    <site site="site1_mid"/>
+    <site site="site1b"/>
+  </spatial>
+
+  <!-- Pair 2 -->
+  <spatial name="spring2a" width="0.015" rgba="0 1 0 1" stiffness="0.1" damping="5">
+    <site site="site2a"/>
+    <site site="site2_mid"/>
+  </spatial>
+  <spatial name="spring2b" width="0.015" rgba="1 1 0 1" stiffness="0.1" damping="5">
+    <site site="site2_mid"/>
+    <site site="site2b"/>
+  </spatial>
+
+  <!-- Pair 3 -->
+  <spatial name="spring3a" width="0.015" rgba="0 1 0 1" stiffness="0.1" damping="5">
+    <site site="site3a"/>
+    <site site="site3_mid"/>
+  </spatial>
+  <spatial name="spring3b" width="0.015" rgba="1 1 0 1" stiffness="0.1" damping="5">
+    <site site="site3_mid"/>
+    <site site="site3b"/>
+  </spatial>
+
+  <!-- Pair 4 -->
+  <spatial name="spring4a" width="0.015" rgba="0 1 0 1" stiffness="0.1" damping="5">
+    <site site="site4a"/>
+    <site site="site4_mid"/>
+  </spatial>
+  <spatial name="spring4b" width="0.015" rgba="1 1 0 1" stiffness="0.1" damping="5">
+    <site site="site4_mid"/>
+    <site site="site4b"/>
+  </spatial>
+</tendon>
+
+
+
+  <!-- ============================================= -->
+  <!-- 6. FIX BLOCK1 IN PLACE (using weld) -->
+  <!-- ============================================= -->
+  <equality>
+    <weld name="fix_block1" body1="block1" body2="world" solref="0.02 1"/>
+  </equality>
+
+<actuator>
+  <motor name="twist_motor" joint="twist_joint" gear="1"/>
+</actuator>
+</mujoco>

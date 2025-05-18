@@ -1,0 +1,47 @@
+<mujoco model="hsa_robot">
+  <compiler angle="radian"/>
+
+  <worldbody>
+    <geom size="0.07 0.08 0.01" type="box"/>
+    <body name="leg_fl" pos="0.035 0.06 -0.01">
+      <inertial pos="0.035 0.06 -0.025" mass="0.02" diaginertia="6.20833e-06 6.20833e-06 4.08333e-06"/>
+      <joint name="base_to_leg_fl" pos="0 0 0" axis="0 1 0" range="-0.25 0.25" actuatorfrcrange="-10 10"/>
+      <geom size="0.0175 0.0175 0.025" pos="0.035 0.06 -0.025" type="box" rgba="0 0 0.8 1"/>
+      <body name="foot_fl" pos="0 0 -0.06">
+        <inertial pos="0.035 0.06 -0.06" quat="0.5 0.5 -0.5 0.5" mass="0.01" diaginertia="2.04167e-06 1.10417e-06 1.10417e-06"/>
+        <joint name="leg_to_foot_fl" pos="0 0 0" axis="0 0 1" type="slide" range="-0.008 0.001" actuatorfrcrange="-10 10"/>
+        <geom size="0.0175 0.0175 0.01" pos="0.035 0.06 -0.06" type="box" rgba="0.8 0 0 1"/>
+      </body>
+    </body>
+    <body name="leg_fr" pos="0.035 -0.06 -0.01">
+      <inertial pos="0.035 -0.06 -0.025" mass="0.02" diaginertia="6.20833e-06 6.20833e-06 4.08333e-06"/>
+      <joint name="base_to_leg_fr" pos="0 0 0" axis="0 1 0" range="-0.25 0.25" actuatorfrcrange="-10 10"/>
+      <geom size="0.0175 0.0175 0.025" pos="0.035 -0.06 -0.025" type="box" rgba="0 0 0.8 1"/>
+      <body name="foot_fr" pos="0 0 -0.06">
+        <inertial pos="0.035 -0.06 -0.06" quat="0.5 0.5 -0.5 0.5" mass="0.01" diaginertia="2.04167e-06 1.10417e-06 1.10417e-06"/>
+        <joint name="leg_to_foot_fr" pos="0 0 0" axis="0 0 1" type="slide" range="-0.008 0.001" actuatorfrcrange="-10 10"/>
+        <geom size="0.0175 0.0175 0.01" pos="0.035 -0.06 -0.06" type="box" rgba="0.8 0 0 1"/>
+      </body>
+    </body>
+    <body name="leg_rl" pos="-0.035 0.06 -0.01">
+      <inertial pos="-0.035 0.06 -0.025" mass="0.02" diaginertia="6.20833e-06 6.20833e-06 4.08333e-06"/>
+      <joint name="base_to_leg_rl" pos="0 0 0" axis="0 1 0" range="-0.25 0.25" actuatorfrcrange="-10 10"/>
+      <geom size="0.0175 0.0175 0.025" pos="-0.035 0.06 -0.025" type="box" rgba="0 0 0.8 1"/>
+      <body name="foot_rl" pos="0 0 -0.06">
+        <inertial pos="-0.035 0.06 -0.06" quat="0.5 0.5 -0.5 0.5" mass="0.01" diaginertia="2.04167e-06 1.10417e-06 1.10417e-06"/>
+        <joint name="leg_to_foot_rl" pos="0 0 0" axis="0 0 1" type="slide" range="-0.008 0.001" actuatorfrcrange="-10 10"/>
+        <geom size="0.0175 0.0175 0.01" pos="-0.035 0.06 -0.06" type="box" rgba="0.8 0 0 1"/>
+      </body>
+    </body>
+    <body name="leg_rr" pos="-0.035 -0.06 -0.01">
+      <inertial pos="-0.035 -0.06 -0.025" mass="0.02" diaginertia="6.20833e-06 6.20833e-06 4.08333e-06"/>
+      <joint name="base_to_leg_rr" pos="0 0 0" axis="0 1 0" range="-0.25 0.25" actuatorfrcrange="-10 10"/>
+      <geom size="0.0175 0.0175 0.025" pos="-0.035 -0.06 -0.025" type="box" rgba="0 0 0.8 1"/>
+      <body name="foot_rr" pos="0 0 -0.06">
+        <inertial pos="-0.035 -0.06 -0.06" quat="0.5 0.5 -0.5 0.5" mass="0.01" diaginertia="2.04167e-06 1.10417e-06 1.10417e-06"/>
+        <joint name="leg_to_foot_rr" pos="0 0 0" axis="0 0 1" type="slide" range="-0.008 0.001" actuatorfrcrange="-10 10"/>
+        <geom size="0.0175 0.0175 0.01" pos="-0.035 -0.06 -0.06" type="box" rgba="0.8 0 0 1"/>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>

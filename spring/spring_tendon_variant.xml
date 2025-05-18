@@ -1,0 +1,95 @@
+<mujoco model="spring_tendon_variant">
+  <option timestep="0.001"/>
+  <size njmax="200" nconmax="100"/>
+
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" width="300" height="300"
+             rgb1="0.8 0.8 0.8" rgb2="0.5 0.5 0.5" mark="edge" markrgb="0.2 0.2 0.2"/>
+    <material name="gridmat" texture="grid" texrepeat="5 5" reflectance="0.1"/>
+  </asset>
+
+  <worldbody>
+    <geom name="floor" type="plane" size="5 5 0.1" material="gridmat" friction="0.2 0.02 0.01"/>
+
+    <!-- Block A -->
+    <body name="block_a" pos="-0.2 0 0.22">
+      <freejoint/>
+      <geom type="box" size="0.05 0.1 0.1" density="500" friction="0.2 0.02 0.01" rgba="0.2 0.6 0.9 1"/>
+
+      <site name="site2b" pos="0.05 -0.07 0.07"/>
+      <site name="site4b" pos="0.05 0.07 -0.07"/>
+
+      <!-- Spring 1 A -->
+      <body name="spring_1a" pos="0.05 0.07 0.07">
+        <joint name="spring1a_hinge" type="hinge" axis="1 0 0" />
+        <geom type="capsule" fromto="0 0 0 0.25 0 0" size="0.01" density="100"/>
+
+        <site name="siteM1a" pos="0.25 0.0 0.0"/>
+        <!-- Spring 1 B -->
+      </body>
+
+      <!-- Spring 3 A -->
+      <body name="spring_3a" pos="0.05 -0.07 -0.07">
+        <joint name="spring3a_hinge" type="hinge" axis="1 0 0" />
+        <geom type="capsule" fromto="0 0 0 0.25 0 0" size="0.01" density="100"/>
+        <!-- Spring 3 B -->
+        <site name="siteM3a" pos="0.25 -0.0 -0.0"/>
+        
+      </body>
+    </body>
+
+    <!-- Block B -->
+    <body name="block_b" pos="0.2 0 0.22">
+      <freejoint/>
+      <geom type="box" size="0.05 0.1 0.1" density="500" friction="0.2 0.02 0.01" rgba="0.9 0.4 0.2 1"/>
+
+      <site name="site1b" pos="-0.05 0.07 0.07"/>
+      <site name="site3b" pos="-0.05 -0.07 -0.07"/>
+
+      <!-- Spring 2 A -->
+      <body name="spring_2a" pos="-0.05 -0.07 0.07">
+        <joint name="spring2a_hinge" type="hinge" axis="1 0 0" />
+        <geom type="capsule" fromto="0 0 0 -0.25 0 0" size="0.01" density="100"/>
+  
+        <!-- Spring 2 B -->
+        <site  name="siteM2a" pos="-0.25 -0.0 0.0"/>
+      </body>
+
+      <!-- Spring 4 A -->
+      <body name="spring_4a" pos="-0.05 0.07 -0.07">
+        <joint name="spring4a_hinge" type="hinge" axis="1 0 0" />
+        <geom type="capsule" fromto="0 0 0 -0.25 0 0" size="0.01" density="100"/>
+        <!-- Spring 4 B -->
+        <site name="siteM4a" pos="-0.25 0.0 -0.0"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <motor name="spring1a_motor" joint="spring1a_hinge" gear="0.1" ctrlrange="-10 10"/>
+    <motor name="spring2a_motor" joint="spring2a_hinge" gear="0.1" ctrlrange="-10 10"/>
+    <motor name="spring3a_motor" joint="spring3a_hinge" gear="0.1" ctrlrange="-10 10"/>
+    <motor name="spring4a_motor" joint="spring4a_hinge" gear="0.1" ctrlrange="-10 10"/>
+  </actuator>
+
+  <tendon>
+    <spatial name="inter1" width="0.01" rgba="0 1 0 1" stiffness="100" damping="10">
+        <site site="siteM1a"/>
+        <site site="site1b"/>
+    </spatial>
+    <spatial name="inter2" width="0.01" rgba="0 1 0 1" stiffness="100" damping="10">
+        <site site="siteM2a"/>
+        <site site="site2b"/>
+    </spatial>
+    <spatial name="inter3" width="0.01" rgba="0 1 0 1" stiffness="100" damping="10">
+        <site site="siteM3a"/>
+        <site site="site3b"/>
+    </spatial>
+    <spatial name="inter4" width="0.01" rgba="0 1 0 1" stiffness="100" damping="10">
+        <site site="siteM4a"/>
+        <site site="site4b"/>
+    </spatial>
+  </tendon>
+
+ 
+</mujoco>

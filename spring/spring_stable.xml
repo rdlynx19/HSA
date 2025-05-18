@@ -1,0 +1,104 @@
+<mujoco model="two_blocks_spring">
+
+  <!-- Simulation Options -->
+  <option timestep="0.001">
+    <flag gravity="enable"/>
+  </option>
+
+  <!-- Assets -->
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" width="300" height="300"
+             rgb1="0.8 0.8 0.8" rgb2="0.5 0.5 0.5" mark="edge" markrgb="0.2 0.2 0.2"/>
+    <material name="gridmat" texture="grid" texrepeat="5 5" reflectance="0.1"/>
+  </asset>
+
+  <!-- Visual Settings -->
+  <visual>
+    <global offwidth="800" offheight="800"/>
+    <quality shadowsize="2048"/>
+    <headlight ambient="0.3 0.3 0.3" diffuse="0.7 0.7 0.7" specular="0.1 0.1 0.1"/>
+  </visual>
+
+  <!-- World Body -->
+  <worldbody>
+    <!-- Ground Plane -->
+    <geom type="plane" size="5 5 0.1" material="gridmat" friction="1 0.5 0.1"/>
+
+    <!-- Lighting -->
+    <light name="light" pos="0 0 3" dir="0 0 -1" directional="true" castshadow="true"/>
+
+    <!-- Camera -->
+    <camera name="fixed" pos="1.5 1.5 0.5" xyaxes="1 0 0 0 1 0"/>
+
+    <!-- Block 1 (Movable) -->
+    <body name="block1" pos="0 0 0.1">
+    
+      <joint name="block1_slidey" type="slide" axis="0 1 0"/>
+      <joint name="block1_hinge" type="hinge" axis="1 0 0"/>
+      <geom type="box" size="0.05 0.1 0.1" rgba="1 0 0 1" mass="10.0"/>
+      <!-- Connection Sites -->
+      <site name="site1a" pos="0.05 0.05 0.05"/>
+      <site name="site2a" pos="0.05 -0.05 0.05"/>
+      <site name="site3a" pos="0.05 0.05 -0.05"/>
+      <site name="site4a" pos="0.05 -0.05 -0.05"/>
+    </body>
+
+    <!-- Block 2 (Movable) -->
+    <body name="block2" pos="0.3 0 0.1">
+    
+      <joint name="block2_slidey" type="slide" axis="0 1 0"/>
+      <joint name="block2_hinge" type="hinge" axis="1 0 0" limited="false"/>
+      <geom type="box" size="0.05 0.1 0.1" rgba="0 0 1 1" mass="10.0"/>
+      <!-- Connection Sites -->
+      <site name="site1b" pos="-0.05 0.05 0.05"/>
+      <site name="site2b" pos="-0.05 -0.05 0.05"/>
+      <site name="site3b" pos="-0.05 0.05 -0.05"/>
+      <site name="site4b" pos="-0.05 -0.05 -0.05"/>
+    </body>
+  </worldbody>
+
+  <!-- Tendon: Springs Connecting the Blocks -->
+  <tendon>
+    <!-- Spring 1 -->
+    <spatial name="spring1" width="0.015" rgba="0 1 0 1" stiffness="100" damping="5">
+      <site site="site1a"/>
+      <site site="site1b"/>
+    </spatial>
+    <!-- Spring 2 -->
+    <spatial name="spring2" width="0.015" rgba="0 1 0 1" stiffness="100" damping="5">
+      <site site="site2a"/>
+      <site site="site2b"/>
+    </spatial>
+    <!-- Spring 3 -->
+    <spatial name="spring3" width="0.015" rgba="0 1 0 1" stiffness="100" damping="5">
+      <site site="site3a"/>
+      <site site="site3b"/>
+    </spatial>
+    <!-- Spring 4 -->
+    <spatial name="spring4" width="0.015" rgba="0 1 0 1" stiffness="100" damping="5">
+      <site site="site4a"/>
+      <site site="site4b"/>
+    </spatial>
+  </tendon>
+
+  <!-- Equality Constraint: Fix Block 1 in Place -->
+  <equality>
+    <!-- <weld name="fix_block1" body1="block1" body2="world" solref="0.02 1"/> -->
+  </equality>
+ 
+ 
+<actuator>
+  <!-- Block 1 -->
+
+  <motor name="block1_slide_y_motor" joint="block1_slidey" gear="1"/>
+  <motor name="block1_hinge_motor"    joint="block1_hinge" gear="1"/>
+
+  <!-- Block 2 -->
+
+  <motor name="block2_slide_y_motor" joint="block2_slidey" gear="1"/>
+  <motor name="block2_hinge_motor"    joint="block2_hinge" gear="1"/>
+</actuator>
+
+
+
+</mujoco>
