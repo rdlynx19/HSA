@@ -5,7 +5,7 @@ import time
 import matplotlib.pyplot as plt
 
 def main():
-    model = mujoco.MjModel.from_xml_path("/home/redhairedlynx/Documents/academics/hsa/torsional/models/asymmetric_edge.xml")
+    model = mujoco.MjModel.from_xml_path("/home/redhairedlynx/Documents/academics/hsa/torsional/models/no_collision.xml")
     data = mujoco.MjData(model)
 
 

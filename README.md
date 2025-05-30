@@ -19,3 +19,34 @@
 - Implemented hybrid spring cable model which is close to what we want
 - Just cable or just spring models won't work well
 - Springs only have linear actuators which change their lengths, to actuate in a twisting manner, you need a cable
+
+### Mujoco (Week 4 5/14 - 5/21)
+- Torsional spring structure using 3 cylindric cables (rigid bodies) and 4 tendons (springs)
+- Must have Y offset and zig zag connection to produce extension
+- Mass calculations for cables:
+	- Each individual cable cylinder has volume 0.141372 L
+	- If I want their mass to be 20g (so that entire HSA structure can be around 60g)
+	- Density parameter should be set to **150**
+- Mass calculations for blocks:
+	- Based on experimental data, the ratio of block mass to HSA mass should be 8:1
+	- So given the volume of each block is 0.5 L
+	- If the mass is to be 480g
+	- Density parameter should be set to **960**
+
+### Mujoco (Week 5 5/21 - 5/28)
+- Derive equations of relationship between torque applied and the spring extension
+- Find what parameters should be adjusted to produce more extension in the springs
+- Some Results for the Single Actuator Model
+
+| Extension | Stiffness | Structure  | Joints | Result                 |
+| --------- | --------- | ---------- | ------ | ---------------------- |
+| ~ 40 mm   | 3000      | Asymmetric | HHS    | ![[40mmExtension.png]] |
+| ~ 50mm    | 5000      | Asymmetric | HHS    | ![[50mmExtension.png]] |
+| ~ 70mm    | 5000      | Asymmetric | HHS    | ![[70mmExtension.png]] |
+Results on the Two Block Model
+
+| Extension | Stiffness | Structure         | Joints | Result                 |
+| --------- | --------- | ----------------- | ------ | ---------------------- |
+| ~ 25mm    | 3000      | Asymmetric Blocks | HHF    | ![[25mmExtension.png]] |
+| ~ 20mm    | 300       | Asymmetric Blocks | HHF    | ![[20mmExtension.png]] |
+|           |           |                   |        |                        |
