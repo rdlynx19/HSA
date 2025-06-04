@@ -1,0 +1,239 @@
+<mujoco model="no_collision7">
+  <option timestep="0.001"/>
+  <size njmax="200" nconmax="100"/>
+
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" width="300" height="300"
+             rgb1="0.8 0.8 0.8" rgb2="0.5 0.5 0.5" mark="edge" markrgb="0.2 0.2 0.2"/>
+    <material name="gridmat" texture="grid" texrepeat="5 5" reflectance="0.1"/>
+  </asset>
+
+  <worldbody>
+    <geom name="floor" type="plane" size="5 5 0.1" material="gridmat" friction="0.2 0.02 0.01" contype="1" conaffinity="1"/>
+
+    <!-- Block A -->
+    <body name="block_a" pos="-0.2 0 0.2">
+      <freejoint/>
+      <geom type="box" size="0.05 0.14 0.14" density="480" friction="0.2 0.02 0.01" rgba="0.2 0.6 0.9 1"/>
+
+      <!-- Cable 1 A -->
+      <body name="spring_1a" pos="0.05 0.07 0.065">
+        <joint name="spring1a_hinge" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
+        <!-- <joint name="spring1a_hinge" type="hinge" axis="1 0 0" /> -->
+        <geom type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" density="150" />
+
+        <site name="siteM1a1" pos="0.05 0.03 0.015"/>
+        <site name="siteM1a2" pos="0.05 -0.03 -0.015"/>
+      </body>
+
+      <!-- Cable 1 B -->
+      <body name="spring_1b" pos="0.175 0.07 0.065">
+        <geom name="spring_1b_collision" type="cylinder" fromto="0 0 0 0.02 0 0" size="0.07" density="150" rgba="1 0 0 0.1" contype="4" conaffinity="0"/>
+        <!-- <geom name="spring_1b_visual" type="cylinder" fromto="-0.175 0 0 0.175 0 0" size="0.04" contype="0" conaffinity="0" rgba="0 0 1 0.3" mass="0"/> -->
+        <joint name="spring1b_hinge" type="hinge" axis="1 0 0"/>
+        <site name="siteM1b1" pos="0 -0.065 -0.015"/>
+        <site name="siteM1b2" pos="0 0.065 0.015"/>
+
+        <site name="siteM1b3" pos="0.02 -0.065 0.015"/>
+        <site name="siteM1b4" pos="0.02 0.065 -0.015"/>
+      </body>
+
+      
+      <!-- Cable 2 C-->
+      <body name="spring_2c" pos="0.05 -0.07 0.065">
+        <geom type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" density="150"/>
+
+        <site name="siteM2c1" pos="0.05 0.03 -0.015"/>
+        <site name="siteM2c2" pos="0.05 -0.03 0.015"/>
+      </body>
+
+
+      <!-- Cable 3 A -->
+      <body name="spring_3a" pos="0.05 -0.07 -0.065">
+        <joint name="spring3a_hinge" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
+        <!-- <joint name="spring3a_hinge" type="hinge" axis="1 0 0" /> -->
+        <geom type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" density="150"/>
+       
+        <site name="siteM3a1" pos="0.05 0.03 0.015"/>
+        <site name="siteM3a2" pos="0.05 -0.03 -0.015"/>
+        
+      </body>
+
+      <!-- Cable 3 B-->
+      <body name="spring_3b" pos="0.175 -0.07 -0.065">
+        
+        <!-- <geom type="cylinder" fromto="0 0 0 0.02 0 0" size="0.07" density="150"/> -->
+        <geom name="spring_3b_collision" type="cylinder" fromto="0 0 0 0.02 0 0" size="0.07" density="150" rgba="1 0 0 0.1" contype="8" conaffinity="0"/>
+        <!-- <geom name="spring_3b_visual" type="cylinder" fromto="-0.175 0 0 0.175 0 0" size="0.04" contype="0" conaffinity="0" rgba="0 0 1 0.3" mass="0"/> -->
+        <joint name="spring3b_hinge" type="hinge" axis="1 0 0"/>
+        <site name="siteM3b1" pos="0.0 -0.065 -0.015"/>
+        <site name="siteM3b2" pos="0.0 0.065 0.015"/>
+        
+        <site name="siteM3b3" pos="0.02 -0.065 0.015"/>
+        <site name="siteM3b4" pos="0.02 0.065 -0.015"/>
+      </body>
+
+      <!-- Cable 4 C-->
+      <body name="spring_4c" pos="0.05 0.07 -0.065">
+        <geom type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" density="150"/>
+
+        <site name="siteM4c1" pos="0.05 0.03 -0.015"/>
+        <site name="siteM4c2" pos="0.05 -0.03 0.015"/>
+      </body>
+
+    </body>
+
+    <!-- Block B -->
+    <body name="block_b" pos="0.2 0 0.2">
+      <freejoint/>
+      <geom type="box" size="0.05 0.14 0.14" density="480" friction="0.2 0.02 0.01" rgba="0.9 0.4 0.2 1"/>
+
+      <!-- <site name="site1b" pos="-0.05 0.07 0.07"/> -->
+      <site name="site3b" pos="-0.05 -0.07 -0.07"/>
+
+      <!-- Cable 1 C-->
+      <body name="spring_1c" pos="-0.05 0.07 0.065">
+        <geom type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" density="150"/>
+        <!-- <joint name="spring1c_hinge" type="slide" axis="1 0 0"/> -->
+        <site name="siteM1c1" pos="-0.05 0.03 -0.015"/>
+        <site name="siteM1c2" pos="-0.05 -0.03 0.015"/>
+      </body>
+
+      <!-- Cable 3 C-->
+      <body name="spring_3c" pos="-0.05 -0.07 -0.065">
+        <geom type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" density="150"/>
+        <!-- <joint name="spring3c_hinge" type="hinge" axis="1 0 0"/> -->
+        <site name="siteM3c1" pos="-0.05 0.03 -0.015"/>
+        <site name="siteM3c2" pos="-0.05 -0.03 0.015"/>
+      </body>
+
+      <!-- Cable 2 A -->
+      <body name="spring_2a" pos="-0.05 -0.07 0.065">
+        <joint name="spring2a_hinge" type="hinge" axis="1 0 0" limited="true" range=" 0 3.14"/>
+        <!-- <joint name="spring2a_hinge" type="hinge" axis="1 0 0" /> -->
+        <geom type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" density="150"/>
+  
+        <site name="siteM2a1" pos="-0.05 0.03 0.015"/>
+        <site name="siteM2a2" pos="-0.05 -0.03 -0.015"/>
+      </body>
+      <!-- Cable 2 B -->
+
+      <body name="spring_2b" pos="-0.175 -0.07 0.065">
+        <!-- <geom type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.07" density="150"/> -->
+         <geom name="spring_2b_collision" type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.07" density="150" rgba="1 0 0 0.1" contype="16" conaffinity="0"/>
+        <!-- <geom name="spring_2b_visual" type="cylinder" fromto="0.175 0 0 -0.175 0 0" size="0.04" contype="0" conaffinity="0" rgba="0 0 1 0.3" mass="0"/> -->
+        <joint name="spring2b_hinge" type="hinge" axis="1 0 0"/>
+        <site name="siteM2b1" pos="0 -0.065 -0.015"/>
+        <site name="siteM2b2" pos="0 0.065 0.015"/> 
+
+        <site name="siteM2b3" pos="-0.02 -0.065 0.015"/>
+        <site name="siteM2b4" pos="-0.02 0.065 -0.015"/>       
+      </body>
+
+
+
+      <!-- Cable 4 A -->
+      <body name="spring_4a" pos="-0.05 0.07 -0.065">
+        <joint name="spring4a_hinge" type="hinge" axis="1 0 0" limited="true" range="0 3.14" />
+        <!-- <joint name="spring4a_hinge" type="hinge" axis="1 0 0" /> -->
+        <geom type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" density="150"/>
+        
+        <site name="siteM4a1" pos="-0.05 0.03 0.015"/>
+        <site name="siteM4a2" pos="-0.05 -0.03 -0.015"/>
+      </body>
+    
+      <!-- Cable 4 B -->
+      <body name="spring_4b" pos="-0.175 0.07 -0.065">
+        <!-- <geom type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.07" density="150"/> -->
+         <geom name="spring_4b_collision" type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.07" density="150" rgba="1 0 0 0.1" contype="32" conaffinity="0"/>
+        <!-- <geom name="spring_4b_visual" type="cylinder" fromto="0.175 0 0 -0.175 0 0" size="0.04" contype="0" conaffinity="0" rgba="0 0 1 0.3" mass="0"/> -->
+        <joint name="spring4b_hinge" type="hinge" axis="1 0 0"/>
+        <site name="siteM4b1" pos="0 -0.065 -0.015"/>
+        <site name="siteM4b2" pos="0 0.065 0.015"/>
+
+        <site name="siteM4b3" pos="-0.02 -0.065 0.015"/>
+        <site name="siteM4b4" pos="-0.02 0.065 -0.015"/>
+      </body>
+
+    </body>
+  </worldbody>
+
+  <actuator>
+    <position name="spring1a_motor" joint="spring1a_hinge" kp="10" ctrlrange="0 3.14"/>
+    <position name="spring2a_motor" joint="spring2a_hinge" kp="10" ctrlrange="0 3.14"/>
+    <position name="spring3a_motor" joint="spring3a_hinge" kp="10" ctrlrange="0 3.14"/>
+    <position name="spring4a_motor" joint="spring4a_hinge" kp="10" ctrlrange="0 3.14"/>
+  </actuator>
+
+  <tendon>
+    <spatial name="inter1a1" width="0.005" rgba="0 1 0 1" stiffness="3000" damping="15">
+        <site site="siteM1a1"/>
+        <site site="siteM1b1"/>
+    </spatial>
+    <spatial name="inter1a2" width="0.005" rgba="0 1 0 1" stiffness="3000" damping="15">
+        <site site="siteM1a2"/>
+        <site site="siteM1b2"/>
+    </spatial>
+      <spatial name="inter1b1" width="0.005" rgba="0 1 0 1" stiffness="3000" damping="15">
+        <site site="siteM1b3"/>
+        <site site="siteM1c1"/>
+    </spatial>
+        <spatial name="inter1b2" width="0.005" rgba="0 1 0 1" stiffness="3000" damping="15">
+        <site site="siteM1b4"/>
+        <site site="siteM1c2"/>
+    </spatial>
+
+    <spatial name="inter2a1" width="0.005" rgba="1 1 0 1" stiffness="3000" damping="15">
+        <site site="siteM2a1"/>
+        <site site="siteM2b1"/>
+    </spatial>
+    <spatial name="inter2a2" width="0.005" rgba="1 1 0 1" stiffness="3000" damping="15">
+        <site site="siteM2a2"/>
+        <site site="siteM2b2"/>
+    </spatial>
+    <spatial name="inter2b1" width="0.005" rgba="1 1 0 1" stiffness="3000" damping="15">
+        <site site="siteM2b3"/>
+        <site site="siteM2c1"/>
+    </spatial>
+    <spatial name="inter2b2" width="0.005" rgba="1 1 0 1" stiffness="3000" damping="15">
+        <site site="siteM2b4"/>
+        <site site="siteM2c2"/>
+    </spatial>
+
+    <spatial name="inter3a1" width="0.005" rgba="0 1 1 1" stiffness="3000" damping="15">
+        <site site="siteM3a1"/>
+        <site site="siteM3b1"/>
+    </spatial>
+    <spatial name="inter3a2" width="0.005" rgba="0 1 1 1" stiffness="3000" damping="15">
+        <site site="siteM3a2"/>
+        <site site="siteM3b2"/>
+    </spatial>
+    <spatial name="inter3b1" width="0.005" rgba="0 1 1 1" stiffness="3000" damping="15">
+        <site site="siteM3b3"/>
+        <site site="siteM3c1"/>
+    </spatial>
+    <spatial name="inter3b2" width="0.005" rgba="0 1 1 1" stiffness="3000" damping="15">
+        <site site="siteM3b4"/>
+        <site site="siteM3c2"/>
+    </spatial>
+
+     <spatial name="inter4a1" width="0.005" rgba="0 1 0.5 1" stiffness="3000" damping="15">
+        <site site="siteM4a1"/>
+        <site site="siteM4b1"/>
+    </spatial>
+    <spatial name="inter4a2" width="0.005" rgba="0 1 0.5 1" stiffness="3000" damping="15">
+        <site site="siteM4a2"/>
+        <site site="siteM4b2"/>
+    </spatial>
+    <spatial name="inter4b1" width="0.005" rgba="0 1 0.5 1" stiffness="3000" damping="15">
+        <site site="siteM4b3"/>
+        <site site="siteM4c1"/>
+    </spatial>
+    <spatial name="inter4b2" width="0.005" rgba="0 1 0.5 1" stiffness="3000" damping="15">
+        <site site="siteM4b4"/>
+        <site site="siteM4c2"/>
+    </spatial>
+
+  </tendon>
+
+</mujoco>

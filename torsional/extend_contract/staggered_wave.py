@@ -13,10 +13,10 @@ sign_map = {
     "spring3a_motor": 1,
     "spring2c_motor": 1,
     "spring4c_motor": 1,
-    "spring1c_motor": -1,
-    "spring3c_motor": -1,
-    "spring2a_motor": -1,
-    "spring4a_motor": -1,
+    "spring1c_motor": 1,
+    "spring3c_motor": 1,
+    "spring2a_motor": 1,
+    "spring4a_motor": 1,
 }
 
 # Actuator ID lookup
