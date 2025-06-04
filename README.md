@@ -49,4 +49,9 @@ Results on the Two Block Model
 | --------- | --------- | ----------------- | ------ | ---------------------- |
 | ~ 25mm    | 3000      | Asymmetric Blocks | HHF    | ![[25mmExtension.png]] |
 | ~ 20mm    | 300       | Asymmetric Blocks | HHF    | ![[20mmExtension.png]] |
-|           |           |                   |        |                        |
+
+### Mujoco (Week 6 5/28 - 6/4)
+- Recorded some plots and organized results in repository
+- Tried chaining the actuators together - not helpful, losing out on extension
+- Remove collision between the central cylindrical plates
+- 
