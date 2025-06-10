@@ -43,7 +43,7 @@
 | ~ 40 mm   | 3000      | Asymmetric | HHS    | ![[40mmExtension.png]] |
 | ~ 50mm    | 5000      | Asymmetric | HHS    | ![[50mmExtension.png]] |
 | ~ 70mm    | 5000      | Asymmetric | HHS    | ![[70mmExtension.png]] |
-Results on the Two Block Model
+- Results on the Two Block Model
 
 | Extension | Stiffness | Structure         | Joints | Result                 |
 | --------- | --------- | ----------------- | ------ | ---------------------- |
