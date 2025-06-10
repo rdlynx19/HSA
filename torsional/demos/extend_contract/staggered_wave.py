@@ -2,9 +2,11 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 import time
+from torsional.utils import load_model_from_arg
 
 # Load model
-model = mujoco.MjModel.from_xml_path("../../models/8Actuators/8_actuator.xml")
+# model = mujoco.MjModel.from_xml_path("../../models/8Actuators/8_actuator.xml")
+model = load_model_from_arg()
 data = mujoco.MjData(model)
 
 # Actuator control direction map
