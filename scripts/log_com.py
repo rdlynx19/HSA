@@ -5,7 +5,7 @@ import time
 import matplotlib.pyplot as plt
 
 def main():
-    xml_path = "/home/redhairedlynx/Documents/academics/hsa/torsional/models/noCollision/no_collision17.xml"
+    xml_path = "/home/redhairedlynx/Documents/academics/hsa/torsional/models/chainedActuators/chained_actuators.xml"
     model = mujoco.MjModel.from_xml_path(xml_path)
     data = mujoco.MjData(model)
 
