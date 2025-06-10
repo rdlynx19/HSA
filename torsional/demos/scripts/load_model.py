@@ -5,8 +5,7 @@ import time
 import matplotlib.pyplot as plt
 from torsional.utils import load_model_from_arg
 
-def main():
-    # model = mujoco.MjModel.from_xml_path("/home/redhairedlynx/Documents/academics/hsa/torsional/models/8Actuators/8_actuator.xml")
+def main():  
     model = load_model_from_arg()
     data = mujoco.MjData(model)
 

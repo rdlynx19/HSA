@@ -3,10 +3,10 @@ import mujoco.viewer
 import numpy as np
 import time
 import matplotlib.pyplot as plt
+from torsional.utils import load_model_from_arg
 
 def main():
-    xml_path = "models/single_actuator.xml"  # Path to your XML
-    model = mujoco.MjModel.from_xml_path(xml_path)
+    model = load_model_from_arg()
     data = mujoco.MjData(model)
 
     # === Actuator info ===
