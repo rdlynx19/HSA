@@ -1,2 +1,4 @@
 mujoco_venv/
 .obsidian/
+*__pycache__
+torsional.egg-info/
