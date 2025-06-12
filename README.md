@@ -42,6 +42,7 @@ python3 demos/extend_contract/staggered_wave.py 8Actuators/8_actuator.xml
 - Write control scripts using MuJoCo's python bindings and helper utilities in `torsional/scripts/`
 
 ## Demo
+https://github.com/user-attachments/assets/3d62310b-5ffb-4cba-a054-b99afaa75108
 
 More demos can be found in `demos/` directory.
 
