@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+import argparse, sys, importlib
+from pathlib import Path
+
+# Mapping demo names to their corresponding paths
+DEMO_MAP = {
+    "bending": "torsional.demos.bending.bending_sequence",
+    "staggered_wave": "torsional.demos.extend_contract.staggered_wave",
+    "staggered_wave_repeat": "torsional.demos.extend_contract.staggered_waveRepeat",
+    "inchworm": "torsional.demos.inchworm.inchworm_dynamic",
+    "rolling_wave" : "torsional.demos.rolling.rolling_wave",
+    "log_com": "torsional.demos.scripts.log_com",
+    "log_single_actuator": "torsional.demos.scripts.log_single_actuator",
+    "load_model": "torsional.demos.scripts.load_model",
+}
+
+# Map model names to their actual XML paths
+MODEL_MAP = {
+    "singleActuator": "torsional/models/singleActuator/single_actuator.xml",
+    "8Actuators": "torsional/models/8Actuators/8_actuator.xml",
+    "anisotropic8": "torsional/models/8Actuators/anisotropic8_actuator.xml",
+    "rolling8": "torsional/models/8Actuators/rolling8actuator.xml",
+    "noCollision10": "torsional/models/noCollision/no_collision10.xml",
+    "noCollision14": "torsional/models/noCollision/no_collision14.xml",
+    "noCollision17": "torsional/models/noCollision/no_collision17.xml",
+    "noCollision7": "torsional/models/noCollision/no_collision7.xml",
+    "point17": "torsional/models/pointOfContact/17mm.xml",
+}
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Run torsional soft actuator demos and scripts.\n\n"
+                    "Examples:\n"
+                    "  python run_demo.py bending singleActuator\n"
+                    "  python run_demo.py rolling_wave 8Actuators",
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+    parser.add_argument(
+        "demo",
+        choices=DEMO_MAP.keys(),
+        metavar="DEMO",
+        help="Demo to run\n - " + "\n - ".join(DEMO_MAP.keys()),
+    )
+
+    parser.add_argument(
+        "model",
+        choices=MODEL_MAP.keys(),
+        metavar="\nMODEL",
+        help="Model to use\n -" + "\n - ".join(MODEL_MAP.keys())
+    )
+    args = parser.parse_args()
+    model_path = Path(MODEL_MAP[args.model])
+    module_name = DEMO_MAP[args.demo]
+    try:
+        demo_module = importlib.import_module(module_name)
+    except ImportError as e:
+        print(f"could not import demo '{args.demo}' ({module_name}): {e}")
+        sys.exit(1)
+
+    # If the demo script has 'main()' function, call it
+    if hasattr(demo_module, "main"):
+        demo_module.main(str(model_path))
+    else:
+        print(f"Demo '{args.demo}' does not define a main(model_path) function.")
+
+if __name__ == "__main__":
+        main()

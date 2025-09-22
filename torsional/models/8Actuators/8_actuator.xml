@@ -1,4 +1,5 @@
 <mujoco model="8_actuator">
+  <compiler angle="radian" autolimits="true"/>
   <option timestep="0.001"/>
   <size njmax="200" nconmax="100"/>
 
