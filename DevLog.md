@@ -59,3 +59,10 @@
 	- Bending
 	- Rolling
 - Wrote up README and documentation
+
+### Mujoco (Week 7 9/18 - 9/25)
+- Reorganized repository with common launch script for all demos
+- Trying to figure out anistropic friction in Mujoco
+	- [Ice Skating](https://github.com/google-deepmind/mujoco/issues/67)
+	- [Same Axis](https://github.com/google-deepmind/mujoco/issues/514)
+- Changed contact points to end springs
