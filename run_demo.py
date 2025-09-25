@@ -4,15 +4,15 @@ from pathlib import Path
 
 # Mapping demo names to their corresponding paths
 DEMO_MAP = {
-    "bending": "torsional.demos.bending.bending_sequence",
-    "staggered_wave": "torsional.demos.extend_contract.staggered_wave",
-    "staggered_wave_repeat": "torsional.demos.extend_contract.staggered_waveRepeat",
-    "inchworm": "torsional.demos.inchworm.inchworm_dynamic",
-    "rolling_wave" : "torsional.demos.rolling.rolling_wave",
-    "log_com": "torsional.demos.scripts.log_com",
-    "log_single_actuator": "torsional.demos.scripts.log_single_actuator",
-    "load_model": "torsional.demos.scripts.load_model",
-    "test_friction": "torsional.demos.scripts.test_friction",
+    "bending": "torsional.demo_scripts.bending.bending_sequence",
+    "staggered_wave": "torsional.demo_scripts.extend_contract.staggered_wave",
+    "staggered_wave_repeat": "torsional.demo_scripts.extend_contract.staggered_waveRepeat",
+    "inchworm": "torsional.demo_scripts.inchworm.inchworm_dynamic",
+    "rolling_wave" : "torsional.demo_scripts.rolling.rolling_wave",
+    "log_com": "torsional.demo_scripts.scripts.log_com",
+    "log_single_actuator": "torsional.demo_scripts.scripts.log_single_actuator",
+    "load_model": "torsional.demo_scripts.scripts.load_model",
+    "test_friction": "torsional.demo_scripts.scripts.test_friction",
 }
 
 # Map model names to their actual XML paths
@@ -30,7 +30,7 @@ MODEL_MAP = {
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run torsional soft actuator demos and scripts.\n\n"
+        description="Run torsional soft actuator demo_scripts and scripts.\n\n"
                     "Examples:\n"
                     "  python run_demo.py bending singleActuator\n"
                     "  python run_demo.py rolling_wave 8Actuators",
