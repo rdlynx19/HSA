@@ -5,18 +5,18 @@
   <asset>
     <texture name="grid" type="2d" builtin="checker" width="300" height="300"
              rgb1="0.8 0.8 0.8" rgb2="0.5 0.5 0.5" mark="edge" markrgb="0.2 0.2 0.2"/>
-    <material name="gridmat" texture="grid" texrepeat="5 5" reflectance="0.1"/>
+    <material name="gridmat" texture="grid" texrepeat="5 5" reflectance="0.1" />
     <material name="anistropic_grip" />
     <material name="low_grip" />
   </asset>
 
   <worldbody>
-    <geom name="floor" type="plane" size="5 5 0.1" material="gridmat" friction="0.02 0.2 0.01"/>
+    <geom name="floor" type="plane" size="5 5 0.1" material="gridmat" friction="0.5 0.1 0.01"/>
 
     <!-- Block A -->
     <body name="block_a" pos="-0.2 0 0.2">
       <freejoint/>
-      <geom type="box" size="0.05 0.14 0.14" density="480" material="anistropic_grip" friction="0.05 0.01 0.01" rgba="0.2 0.6 0.9 1"/>
+      <geom type="box" size="0.05 0.14 0.14" density="480" material="anistropic_grip" friction="0.05 0.1 0.01" rgba="0.2 0.6 0.9 1"/>
 
       <!-- Cable 1 A -->
       <body name="spring_1a" pos="0.05 0.07 0.065">
@@ -89,7 +89,7 @@
     <!-- Block B -->
     <body name="block_b" pos="0.2 0 0.2">
       <freejoint/>
-      <geom type="box" size="0.05 0.14 0.14" density="480" material="low_grip" friction="0.01 0.01 0.01" rgba="0.9 0.4 0.2 1"/>
+      <geom type="box" size="0.05 0.14 0.14" density="480" material="low_grip" friction="0.05 0.1 0.01" rgba="0.9 0.4 0.2 1"/>
 
       <!-- <site name="site1b" pos="-0.05 0.07 0.07"/> -->
       <site name="site3b" pos="-0.05 -0.07 -0.07"/>

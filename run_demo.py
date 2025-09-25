@@ -12,19 +12,20 @@ DEMO_MAP = {
     "log_com": "torsional.demos.scripts.log_com",
     "log_single_actuator": "torsional.demos.scripts.log_single_actuator",
     "load_model": "torsional.demos.scripts.load_model",
+    "test_friction": "torsional.demos.scripts.test_friction",
 }
 
 # Map model names to their actual XML paths
 MODEL_MAP = {
-    "singleActuator": "torsional/models/singleActuator/single_actuator.xml",
-    "8Actuators": "torsional/models/8Actuators/8_actuator.xml",
-    "anisotropic8": "torsional/models/8Actuators/anisotropic8_actuator.xml",
-    "rolling8": "torsional/models/8Actuators/rolling8actuator.xml",
-    "noCollision10": "torsional/models/noCollision/no_collision10.xml",
-    "noCollision14": "torsional/models/noCollision/no_collision14.xml",
-    "noCollision17": "torsional/models/noCollision/no_collision17.xml",
-    "noCollision7": "torsional/models/noCollision/no_collision7.xml",
-    "point17": "torsional/models/pointOfContact/17mm.xml",
+    "single_actuator": "torsional/models/singleActuator/single_actuator.xml",
+    "eight_actuators": "torsional/models/8Actuators/8_actuator.xml",
+    "friction": "torsional/models/8Actuators/anisotropic8_actuator.xml",
+    "rolling_8": "torsional/models/8Actuators/rolling8actuator.xml",
+    "no_collision_10": "torsional/models/noCollision/no_collision10.xml",
+    "no_collision_14": "torsional/models/noCollision/no_collision14.xml",
+    "no_collision_17": "torsional/models/noCollision/no_collision17.xml",
+    "no_collision_7": "torsional/models/noCollision/no_collision7.xml",
+    "end_contact_17": "torsional/models/pointOfContact/17mm.xml",
 }
 
 def main():
@@ -46,7 +47,7 @@ def main():
         "model",
         choices=MODEL_MAP.keys(),
         metavar="\nMODEL",
-        help="Model to use\n -" + "\n - ".join(MODEL_MAP.keys())
+        help="Model to use\n - " + "\n - ".join(MODEL_MAP.keys())
     )
     args = parser.parse_args()
     model_path = Path(MODEL_MAP[args.model])
