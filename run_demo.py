@@ -9,10 +9,10 @@ DEMO_MAP = {
     "staggered_wave_repeat": "torsional.demo_scripts.extend_contract.staggered_waveRepeat",
     "inchworm": "torsional.demo_scripts.inchworm.inchworm_dynamic",
     "rolling_wave" : "torsional.demo_scripts.rolling.rolling_wave",
-    "log_com": "torsional.demo_scripts.scripts.log_com",
-    "log_single_actuator": "torsional.demo_scripts.scripts.log_single_actuator",
-    "load_model": "torsional.demo_scripts.scripts.load_model",
-    "test_friction": "torsional.demo_scripts.scripts.test_friction",
+    "log_com": "torsional.demo_scripts.load_scripts.log_com",
+    "log_single_actuator": "torsional.demo_scripts.load_scripts.log_single_actuator",
+    "load_model": "torsional.demo_scripts.load_scripts.load_model",
+    "test_friction": "torsional.demo_scripts.load_scripts.test_friction",
 }
 
 # Map model names to their actual XML paths
@@ -26,6 +26,7 @@ MODEL_MAP = {
     "no_collision_17": "torsional/models/noCollision/no_collision17.xml",
     "no_collision_7": "torsional/models/noCollision/no_collision7.xml",
     "end_contact_17": "torsional/models/pointOfContact/17mm.xml",
+    "actuator_groups": "torsional/models/testing/actuator_groups.xml",
 }
 
 def main():
