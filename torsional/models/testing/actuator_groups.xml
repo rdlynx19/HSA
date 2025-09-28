@@ -1,6 +1,6 @@
 <mujoco model="actuatorGroups">
     <compiler angle="radian" />
-    <option timestep="0.001" />
+    <option timestep="0.001" actuatorgroupdisable="2" />
     
     <asset>
         <texture name="grid" type="2d" builtin="checker" width="300" height="300"
@@ -19,12 +19,13 @@
         <!-- Block A -->
         <body name="block_a" pos="-0.2 0 0.2">
             <freejoint/>
-            <geom type="box" size="0.03 0.12 0.12" density="480" friction="0.2 0.02 0.01" rgba="0.2 0.6 0.9 1"/>
+            <geom type="box" size="0.03 0.12 0.12" mass="2.4" friction="0.2 0.02 0.01" rgba="0.2 0.6 0.9 1"/>
 
             <!-- Cylinder 1A -->
             <body name="cylinder1a" pos="0.03 0.10 0.10">
+                <inertial pos="0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
                 <joint name="cylinder1a_hinge" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
-                <geom type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" density="150" />
+                <geom type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" />
 
                 <site name="siteM1a1" pos="0.03 0.03 0.015"/>
                 <site name="siteM1a2" pos="0.03 -0.03 -0.015"/>
@@ -32,20 +33,22 @@
 
             <!-- Disc 1B -->
             <body name="disc1b" pos="0.175 0.10 0.10">
-                <geom name="disc1b_con" type="cylinder" fromto="0 0 0 0.02 0 0" size="0.07" density="150" rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
+                <inertial pos="0.02 0 0" mass="0.1" diaginertia="0.0001 0.000225 0.000225"/>
+                <geom name="disc1b_con" type="cylinder" fromto="0 0 0 0.02 0 0" size="0.14"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
                 <joint name="spring1b_hinge" type="hinge" axis="1 0 0"/>
-                <site name="siteM1b1" pos="0 -0.065 -0.015"/>
-                <site name="siteM1b2" pos="0 0.065 0.015"/>
+                <site name="siteM1b1" pos="0 -0.135 -0.015"/>
+                <site name="siteM1b2" pos="0 0.135 0.015"/>
 
-                <site name="siteM1b3" pos="0.02 -0.065 0.015"/>
-                <site name="siteM1b4" pos="0.02 0.065 -0.015"/>
+                <site name="siteM1b3" pos="0.02 -0.135 0.015"/>
+                <site name="siteM1b4" pos="0.02 0.135 -0.015"/>
             </body>
 
             
             <!-- Cylinder 2C-->
             <body name="cylinder2c" pos="0.03 -0.10 0.10">
+                <inertial pos="0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
                 <joint name="cylinder2c_hinge" type="hinge" axis="1 0 0"/>
-                <geom type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" density="150"/>
+                <geom type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" />
 
                 <site name="siteM2c1" pos="0.03 0.03 -0.015"/>
                 <site name="siteM2c2" pos="0.03 -0.03 0.015"/>
@@ -54,8 +57,9 @@
 
             <!-- Cylinder 3A -->
             <body name="cylinder3a" pos="0.03 -0.10 -0.10">
+                <inertial pos="0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
                 <joint name="cylinder3a_hinge" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
-                <geom type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" density="150"/>
+                <geom type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" />
             
                 <site name="siteM3a1" pos="0.03 0.03 0.015"/>
                 <site name="siteM3a2" pos="0.03 -0.03 -0.015"/>
@@ -63,19 +67,21 @@
             </body>
 
             <!-- Disc 3B-->
-            <body name="disc3b" pos="0.175 -0.10 -0.10"> 
-                <geom name="disc3b_con" type="cylinder" fromto="0 0 0 0.02 0 0" size="0.07" density="150" rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
+            <body name="disc3b" pos="0.175 -0.10 -0.10">
+                <inertial pos="0.02 0 0" mass="0.1" diaginertia="0.0001 0.000225 0.000225"/> 
+                <geom name="disc3b_con" type="cylinder" fromto="0 0 0 0.02 0 0" size="0.14"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
                 <joint name="disc3b_hinge" type="hinge" axis="1 0 0"/>
-                <site name="siteM3b1" pos="0.0 -0.065 -0.015"/>
-                <site name="siteM3b2" pos="0.0 0.065 0.015"/>
+                <site name="siteM3b1" pos="0.0 -0.135 -0.015"/>
+                <site name="siteM3b2" pos="0.0 0.135 0.015"/>
                 
-                <site name="siteM3b3" pos="0.02 -0.065 0.015"/>
-                <site name="siteM3b4" pos="0.02 0.065 -0.015"/>
+                <site name="siteM3b3" pos="0.02 -0.135 0.015"/>
+                <site name="siteM3b4" pos="0.02 0.135 -0.015"/>
             </body>
 
             <!-- Cylinder 4C-->
             <body name="cylinder4c" pos="0.03 0.10 -0.10">
-                <geom type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" density="150"/>
+                <inertial pos="0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
+                <geom type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" />
                 <joint name="cylinder4c_hinge" type="hinge" axis="1 0 0"/>
                 <site name="siteM4c1" pos="0.03 0.03 -0.015"/>
                 <site name="siteM4c2" pos="0.03 -0.03 0.015"/>
@@ -86,11 +92,12 @@
         <!-- Block B -->
         <body name="block_b" pos="0.2 0 0.2">
             <freejoint/>
-            <geom type="box" size="0.03 0.12 0.12" density="480" friction="0.2 0.02 0.01" rgba="0.9 0.4 0.2 1"/>
+            <geom type="box" size="0.03 0.12 0.12" mass="2.4" friction="0.2 0.02 0.01" rgba="0.9 0.4 0.2 1"/>
 
             <!-- Cylinder 1C -->
             <body name="cylinder1c" pos="-0.03 0.10 0.10">
-                <geom type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" density="150"/>
+                <inertial pos="-0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
+                <geom type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" />
                 <joint name="cylinder1c_hinge" type="hinge" axis="1 0 0"/>
 
                 <site name="siteM1c1" pos="-0.03 0.03 -0.015"/>
@@ -99,7 +106,8 @@
 
             <!-- Cylinder 3C-->
             <body name="cylinder_3c" pos="-0.03 -0.10 -0.10">
-                <geom type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" density="150"/>
+                <inertial pos="-0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
+                <geom type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" />
                 <joint name="cylinder3c_hinge" type="hinge" axis="1 0 0"/>
 
                 <site name="siteM3c1" pos="-0.03 0.03 -0.015"/>
@@ -108,8 +116,9 @@
 
             <!-- Cylinder 2A -->
             <body name="cylinder2a" pos="-0.03 -0.10 0.10">
+                <inertial pos="-0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
                 <joint name="cylinder2a_hinge" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
-                <geom type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" density="150"/>
+                <geom type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" />
         
                 <site name="siteM2a1" pos="-0.03 0.03 0.015"/>
                 <site name="siteM2a2" pos="-0.03 -0.03 -0.015"/>
@@ -117,21 +126,23 @@
             
             <!-- Disc 2B -->
             <body name="disc2b" pos="-0.175 -0.10 0.10">
-                <geom name="disc2b_con" type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.07" density="150" rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
+                <inertial pos="-0.02 0 0" mass="0.1" diaginertia="0.0001 0.000225 0.000225"/>
+                <geom name="disc2b_con" type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.14"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
                 <joint name="disc2b_hinge" type="hinge" axis="1 0 0"/>
-                <site name="siteM2b1" pos="0 -0.065 -0.015"/>
-                <site name="siteM2b2" pos="0 0.065 0.015"/> 
+                <site name="siteM2b1" pos="0 -0.135 -0.015"/>
+                <site name="siteM2b2" pos="0 0.135 0.015"/> 
 
-                <site name="siteM2b3" pos="-0.02 -0.065 0.015"/>
-                <site name="siteM2b4" pos="-0.02 0.065 -0.015"/>       
+                <site name="siteM2b3" pos="-0.02 -0.135 0.015"/>
+                <site name="siteM2b4" pos="-0.02 0.135 -0.015"/>       
             </body>
 
 
 
             <!-- Cylinder4A -->
             <body name="cylinder4a" pos="-0.03 0.10 -0.10">
+                <inertial pos="-0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
                 <joint name="cylinder4a_hinge" type="hinge" axis="1 0 0" limited="true" range="0 3.14" />
-                <geom type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" density="150"/>
+                <geom type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" />
                 
                 <site name="siteM4a1" pos="-0.03 0.03 0.015"/>
                 <site name="siteM4a2" pos="-0.03 -0.03 -0.015"/>
@@ -139,29 +150,52 @@
             
             <!-- Disc4B -->
             <body name="disc4b" pos="-0.175 0.10 -0.10">
-                <geom name="disc4b_con" type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.07" density="150" rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
+                <inertial pos="-0.02 0 0" mass="0.1" diaginertia="0.0001 0.000225 0.000225"/>
+                <geom name="disc4b_con" type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.14"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
                 <joint name="disc4b_hinge" type="hinge" axis="1 0 0"/>
-                <site name="siteM4b1" pos="0 -0.065 -0.015"/>
-                <site name="siteM4b2" pos="0 0.065 0.015"/>
+                <site name="siteM4b1" pos="0 -0.135 -0.015"/>
+                <site name="siteM4b2" pos="0 0.135 0.015"/>
 
-                <site name="siteM4b3" pos="-0.02 -0.065 0.015"/>
-                <site name="siteM4b4" pos="-0.02 0.065 -0.015"/>
+                <site name="siteM4b3" pos="-0.02 -0.135 0.015"/>
+                <site name="siteM4b4" pos="-0.02 0.135 -0.015"/>
             </body>
 
         </body>
     </worldbody>
 
     <actuator>
-        <position name="spring1a_motor" joint="cylinder1a_hinge" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring2a_motor" joint="cylinder2a_hinge" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring3a_motor" joint="cylinder3a_hinge" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring4a_motor" joint="cylinder4a_hinge" kp="10" ctrlrange="0 3.14"/>
-        
-        <position name="spring1c_motor" joint="cylinder1c_hinge" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring2c_motor" joint="cylinder2c_hinge" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring3c_motor" joint="cylinder3c_hinge" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring4c_motor" joint="cylinder4c_hinge" kp="10" ctrlrange="0 3.14"/>
+        <motor name="spring1a_torque" group="0" joint="cylinder1a_hinge" gear="0.05" ctrlrange="-5 5"/>
+        <motor name="spring2a_torque" group="0" joint="cylinder2a_hinge" gear="0.05" ctrlrange="-5 5"/>
+        <motor name="spring3a_torque" group="0" joint="cylinder3a_hinge" gear="0.05" ctrlrange="-5 5"/>
+        <motor name="spring4a_torque" group="0" joint="cylinder4a_hinge" gear="0.05" ctrlrange="-5 5"/>
+
+        <motor name="spring1c_torque" group="0" joint="cylinder1c_hinge" gear="0.05" ctrlrange="-5 5"/>
+        <motor name="spring2c_torque" group="0" joint="cylinder2c_hinge" gear="0.05" ctrlrange="-5 5"/>
+        <motor name="spring3c_torque" group="0" joint="cylinder3c_hinge" gear="0.05" ctrlrange="-5 5"/>
+        <motor name="spring4c_torque" group="0" joint="cylinder4c_hinge" gear="0.05" ctrlrange="-5 5"/>
     </actuator>
+    <actuator>
+        <position name="spring1a_motor" group="1" joint="cylinder1a_hinge" kp="10" ctrlrange="0 3.14"/>
+        <position name="spring2a_motor" group="1" joint="cylinder2a_hinge" kp="10" ctrlrange="0 3.14"/>
+        <position name="spring3a_motor" group="1" joint="cylinder3a_hinge" kp="10" ctrlrange="0 3.14"/>
+        <position name="spring4a_motor" group="1" joint="cylinder4a_hinge" kp="10" ctrlrange="0 3.14"/>
+        
+        <position name="spring1c_motor" group="1" joint="cylinder1c_hinge" kp="10" ctrlrange="0 3.14"/>
+        <position name="spring2c_motor" group="1" joint="cylinder2c_hinge" kp="10" ctrlrange="0 3.14"/>
+        <position name="spring3c_motor" group="1" joint="cylinder3c_hinge" kp="10" ctrlrange="0 3.14"/>
+        <position name="spring4c_motor" group="1" joint="cylinder4c_hinge" kp="10" ctrlrange="0 3.14"/>
+    </actuator>
+    <actuator>
+        <intvelocity name="spring1a_intvel" group="2" joint="cylinder1a_hinge" kv="1" actrange="0 3.14"/>
+        <intvelocity name="spring2a_intvel" group="2" joint="cylinder2a_hinge" kv="1" actrange="0 3.14"/>
+        <intvelocity name="spring3a_intvel" group="2" joint="cylinder3a_hinge" kv="1" actrange="0 3.14"/>
+        <intvelocity name="spring4a_intvel" group="2" joint="cylinder4a_hinge" kv="1" actrange="0 3.14"/>
+
+        <intvelocity name="spring1c_intvel" group="2" joint="cylinder1c_hinge" kv="1" actrange="0 3.14"/>
+        <intvelocity name="spring2c_intvel" group="2" joint="cylinder2c_hinge" kv="1" actrange="0 3.14"/>
+        <intvelocity name="spring3c_intvel" group="2" joint="cylinder3c_hinge" kv="1" actrange="0 3.14"/>
+        <intvelocity name="spring4c_intvel" group="2" joint="cylinder4c_hinge" kv="1" actrange="0 3.14"/>
+    </actuator> 
 
     <tendon>
         <spatial name="inter1a1" width="0.005" rgba="0 1 0 1" stiffness="3000" damping="15">
