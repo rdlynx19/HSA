@@ -13,6 +13,7 @@ DEMO_MAP = {
     "log_single_actuator": "torsional.demo_scripts.load_scripts.log_single_actuator",
     "load_model": "torsional.demo_scripts.load_scripts.load_model",
     "test_friction": "torsional.demo_scripts.load_scripts.test_friction",
+    "position_control": "torsional.demo_scripts.control_interface.position_control",
 }
 
 # Map model names to their actual XML paths

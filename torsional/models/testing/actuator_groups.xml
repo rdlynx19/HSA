@@ -1,6 +1,6 @@
 <mujoco model="actuatorGroups">
     <compiler angle="radian" />
-    <option timestep="0.001" actuatorgroupdisable=" 0 2" />
+    <option timestep="0.001" actuatorgroupdisable="0 2" />
     
     <asset>
         <texture name="grid" type="2d" builtin="checker" width="300" height="300"
