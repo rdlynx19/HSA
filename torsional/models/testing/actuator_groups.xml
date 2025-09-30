@@ -19,6 +19,7 @@
         <!-- Block A -->
         <body name="block_a" pos="-0.2 0 0.2">
             <freejoint/>
+            <inertial pos="0.04 0 0" mass="2.4" diaginertia="0.001 0.01 0.01"/>
             <geom type="box" size="0.03 0.12 0.12" mass="2.4" friction="0.2 0.02 0.01" rgba="0.2 0.6 0.9 1"/>
 
             <!-- Cylinder 1A -->
@@ -92,6 +93,7 @@
         <!-- Block B -->
         <body name="block_b" pos="0.2 0 0.2">
             <freejoint/>
+            <inertial pos="-0.04 0 0" mass="2.4" diaginertia="0.001 0.01 0.01"/>
             <geom type="box" size="0.03 0.12 0.12" mass="2.4" friction="0.2 0.02 0.01" rgba="0.9 0.4 0.2 1"/>
 
             <!-- Cylinder 1C -->
