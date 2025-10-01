@@ -1,6 +1,6 @@
 <mujoco model="actuatorGroups">
     <compiler angle="radian" />
-    <option timestep="0.001" actuatorgroupdisable="0 2" />
+    <option timestep="0.001" actuatorgroupdisable="0 1" />
     
     <asset>
         <texture name="grid" type="2d" builtin="checker" width="300" height="300"
@@ -185,26 +185,26 @@
         <motor name="spring4c_torque" group="0" joint="cylinder4c_hinge" gear="0.05" ctrlrange="-5 5"/>
     </actuator>
     <actuator>
-        <position name="spring1a_motor" group="1" joint="cylinder1a_hinge" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring2a_motor" group="1" joint="cylinder2a_hinge" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring3a_motor" group="1" joint="cylinder3a_hinge" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring4a_motor" group="1" joint="cylinder4a_hinge" kp="10" ctrlrange="0 3.14"/>
+        <position name="spring1a_motor" group="1" joint="cylinder1a_hinge" kp="1" ctrlrange="-3.14 3.14"/>
+        <position name="spring2a_motor" group="1" joint="cylinder2a_hinge" kp="1" ctrlrange="-3.14 3.14"/>
+        <position name="spring3a_motor" group="1" joint="cylinder3a_hinge" kp="1" ctrlrange="-3.14 3.14"/>
+        <position name="spring4a_motor" group="1" joint="cylinder4a_hinge" kp="1" ctrlrange="-3.14 3.14"/>
         
-        <position name="spring1c_motor" group="1" joint="cylinder1c_hinge" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring2c_motor" group="1" joint="cylinder2c_hinge" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring3c_motor" group="1" joint="cylinder3c_hinge" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring4c_motor" group="1" joint="cylinder4c_hinge" kp="10" ctrlrange="0 3.14"/>
+        <position name="spring1c_motor" group="1" joint="cylinder1c_hinge" kp="1" ctrlrange="-3.14 3.14"/>
+        <position name="spring2c_motor" group="1" joint="cylinder2c_hinge" kp="1" ctrlrange="-3.14 3.14"/>
+        <position name="spring3c_motor" group="1" joint="cylinder3c_hinge" kp="1" ctrlrange="-3.14 3.14"/>
+        <position name="spring4c_motor" group="1" joint="cylinder4c_hinge" kp="1" ctrlrange="-3.14 3.14"/>
     </actuator>
     <actuator>
-        <intvelocity name="spring1a_intvel" group="2" joint="cylinder1a_hinge" kv="1" actrange="0 3.14"/>
-        <intvelocity name="spring2a_intvel" group="2" joint="cylinder2a_hinge" kv="1" actrange="0 3.14"/>
-        <intvelocity name="spring3a_intvel" group="2" joint="cylinder3a_hinge" kv="1" actrange="0 3.14"/>
-        <intvelocity name="spring4a_intvel" group="2" joint="cylinder4a_hinge" kv="1" actrange="0 3.14"/>
+        <velocity name="spring1a_vel" group="2" joint="cylinder1a_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
+        <velocity name="spring2a_vel" group="2" joint="cylinder2a_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
+        <velocity name="spring3a_vel" group="2" joint="cylinder3a_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
+        <velocity name="spring4a_vel" group="2" joint="cylinder4a_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
 
-        <intvelocity name="spring1c_intvel" group="2" joint="cylinder1c_hinge" kv="1" actrange="0 3.14"/>
-        <intvelocity name="spring2c_intvel" group="2" joint="cylinder2c_hinge" kv="1" actrange="0 3.14"/>
-        <intvelocity name="spring3c_intvel" group="2" joint="cylinder3c_hinge" kv="1" actrange="0 3.14"/>
-        <intvelocity name="spring4c_intvel" group="2" joint="cylinder4c_hinge" kv="1" actrange="0 3.14"/>
+        <velocity name="spring1c_vel" group="2" joint="cylinder1c_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
+        <velocity name="spring2c_vel" group="2" joint="cylinder2c_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
+        <velocity name="spring3c_vel" group="2" joint="cylinder3c_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
+        <velocity name="spring4c_vel" group="2" joint="cylinder4c_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
     </actuator> 
 
     <tendon>

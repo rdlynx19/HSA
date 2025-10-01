@@ -22,7 +22,7 @@ def main(model_path=None):
             raise ValueError(f"Actuator '{name}' not found in the model.")
         position_actuator_ids.append(position_actuator_id)
     
-    JOINT_NAME = "cylinder1a_hinge"
+    JOINT_NAME = "cylinder3a_hinge"
     joint_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, JOINT_NAME)
 
     if joint_id < 0:
@@ -33,7 +33,7 @@ def main(model_path=None):
     print("-" * 50)
 
     with mujoco.viewer.launch_passive(model, data) as viewer:
-        duration = 5.0 # seconds
+        duration = 0.5 # seconds
         total_duration = 2 * duration
         # Set all controls to zero initially. (Disabling all groups?)
         data.ctrl[:] = 0.0
