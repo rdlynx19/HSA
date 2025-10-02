@@ -16,6 +16,17 @@ def main(model_path=None):
     POSITION_ACTUATORS= ["spring1a_motor", "spring2c_motor", "spring3a_motor", "spring4c_motor"]
     position_actuator_ids = []
 
+    # To enable an actuator group, we can use
+    # model.opt.disableactuator &= ~(1 << group_index)
+
+    # To disable an actuator group, we can use
+    # model.opt.disableactuator |= (1 << group_index)
+
+    # Checking if the group is disabled
+    # ((model.opt.disableactuator >> group_index) & 1) == 1
+    
+    model.opt.disableactuator &= ~(1 << 1)
+
     for name in POSITION_ACTUATORS:
         position_actuator_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
         if position_actuator_id < 0:

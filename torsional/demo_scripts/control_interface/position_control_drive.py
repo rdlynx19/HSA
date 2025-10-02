@@ -70,7 +70,7 @@ def main(model_path=None):
 
             mujoco.mj_step(model, data)
             viewer.sync()
-            time.sleep(model.opt.timestep)
+            time.sleep(model.opt.tismetep)
 
             if data.time % 0.1 < model.opt.timestep:
                 print(f"Time: {data.time:.2f}s, Target: {target_position:.1f} rad, Actual: {data.qpos[model.jnt_qposadr[joint_id]]:.2f} rad")
