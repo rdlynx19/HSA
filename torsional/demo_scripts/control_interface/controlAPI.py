@@ -2,6 +2,7 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 from enum import Enum, auto
+import time
 
 class RobotState(Enum):
     """
@@ -41,15 +42,6 @@ class MuJoCoControlInterface:
         :param group_index: Index of the actuator group to disable
         """
         self.model.opt.disableactuator |= (1 << group_index)
-      
-    def check_actuator_group_status(self, group_index: int) -> bool:
-        """
-        Check if a specific actuator group is disabled
-        :param group_index: Index of the actuator group to check
-
-        :return: True if the group is disabled, False otherwise
-        """
-        return ((self.model.opt.disableactuator >> group_index) & 1) == 1
     
     def get_joint_positions(self, joint_names: list[str]) -> list[tuple[str, float]]:
         """
@@ -109,13 +101,12 @@ class MuJoCoControlInterface:
         """
         mujoco.mj_resetData(self.model, self.data)  
 
-    def launch_viewer(self) -> mujoco.viewer.MjViewer:
+    def launch_viewer(self) -> None:
         """
         Launch a passive viewer for the MuJoCo simulation
         """
-        self.viewer =  mujoco.viewer.launch_passive(self.model, self.data)
-        return self.viewer
-    
+        self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
+
     def sync_viewer(self) -> None:
         """
         Sync the viewer with the current simulation state
@@ -123,22 +114,15 @@ class MuJoCoControlInterface:
         if self.viewer is not None:
             self.viewer.sync()
 
-    def position_control_drive(self, position_actuators: list[str], joint_name: str, target_positions: list[float], duration: float) -> None:
+    def velocity_control_drive(self, actuator_names: list[str], joint_name: str, velocity: float, duration: float) -> None:
         """
-        Apply position control to specified actuators and monitor a joint's position
-        :param position_actuators: List of actuator names to apply position control to
-        :param joint_name: Name of the joint to monitor
-        :param target_positions: List of target positions to alternate between
-        :param duration: Duration in seconds for each target position
+        Apply velocity control to specified actuators for a given duration
         """
-        # Get robot state
-        robot_state = self.get_robot_state()
-        # Change actuator group state
-        
+        self.disable_actuator_group(1)
+        self.enable_actuator_group(2)
 
         actuator_ids = []
-        # Save actuator IDs to send position commands
-        for name in position_actuators:
+        for name in actuator_names:
             actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
             if actuator_id < 0:
                 raise ValueError(f"Actuator '{name}' not found in the model.")
@@ -148,3 +132,34 @@ class MuJoCoControlInterface:
         if joint_id < 0:
             raise ValueError(f"Joint '{joint_name}' not found in the model.")
         
+        self.launch_viewer()
+        try:
+            #  What is a better way to do this?
+            self.data.ctrl[:] = 0.0
+            
+            self.step_simulation()
+            self.sync_viewer()
+            
+            while self.viewer.is_running():
+                for i, act_id in enumerate(actuator_ids):
+                    if i % 2 == 0:
+                        self.data.ctrl[act_id] = velocity
+                    else:
+                        self.data.ctrl[act_id] = -velocity 
+
+                self.step_simulation()
+                self.sync_viewer()
+                time.sleep(self.model.opt.timestep)
+        finally:
+            self.close_simulation()
+
+    def close_simulation(self) -> None:
+        """
+        Close the MuJoCo simulation cleanly
+        """
+        if hasattr(self, "viewer") and self.viewer is not None:
+            self.viewer.close()
+            self.viewer = None  
+        if  hasattr(self, "data"):
+            self.data.ctrl[:] = 0.0
+         
