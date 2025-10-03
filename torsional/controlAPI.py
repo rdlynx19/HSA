@@ -159,7 +159,8 @@ class MuJoCoControlInterface:
         """
         if hasattr(self, "viewer") and self.viewer is not None:
             self.viewer.close()
-            self.viewer = None  
+            self.viewer = None 
+
         if  hasattr(self, "data"):
             self.data.ctrl[:] = 0.0
          
