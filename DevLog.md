@@ -66,3 +66,31 @@
 	- [Ice Skating](https://github.com/google-deepmind/mujoco/issues/67)
 	- [Same Axis](https://github.com/google-deepmind/mujoco/issues/514)
 - Changed contact points to end springs
+
+### Mujoco (Week 8 9/25 - 10/2)
+- Restructured model to incorporate three different types of actuators
+	- Torque control
+	- Position control
+	- Velocity control
+- Enabled toggling for enabling and disabling groups of actuators i.e. switching between position control, torque control, and velocity control
+- Corresponding Motor IDs: 0(1a) 1(4c) 2(3a) 5(2c) 4(1c) 3(4a) 6(3b) 7(2a)
+- LookUp Table for actuated motors in different locomotion modes:
+
+	| Locomotion Mode | Motor IDs | Sim Motor IDs | Notes | Range|
+	|----------|----------|----------|----------|------|
+	| Drive (Velocity Control)  | 0, 1, 2, 3, 4, 5, 6, 7 | 1a, 2c, 3a, 4c, 1c, 2a, 3c, 4a  | 0,1,2,5 forward 3,4,6,7 backward|scaling_factor * 440|
+	| Rotation in Drive |  |   | ||
+	| Crawl (Position Control)  | 0, 1, 2, 5 | 1a, 4c, 3a, 2c | Extend & Retract repeatedly on either side||
+	| Rotation in Crawl||||
+	| Paddling (Position Control) |0, 2, 3, 7| 1a, 3a, 4a, 2a|0,2 +ext & 3,7 -ext & 3,7 0|+4000 and -4000|
+	| Extension (Position Control) |0, 1, 2, 3, 4, 5, 6, 7| 1a, 2c, 3a, 4c, 1c, 2a, 3c, 4a|0,2,4,6 +extension 1,5,3,7 -extension|scaling_factor * 4000|
+	| Twist Direction Zero (Position Control) | 0, 2 or 0,6| 1a, 3a or 1a,3c |0,2 +ext| +5200 (or arbitrary value) from current position|
+	| Twist Direction One (Position Control) | 1, 5 or 1,7| 4c, 2c or 4c, 2a |1,5 -ext| -5200 (or arbitrary value) from current position|
+	| Bending (Position Control) | 0, 1, 2, 5| 1a, 4c, 3a, 2c |0+,5- or 2+,5- or !(5+,0-) or 2+,1-| scaling_factor * 4000 (signs mentioned)|
+	| Turn (Velocity Control) | 0, 2, 4, 6| 1a, 3a, 1c, 3c|4,6+ then 0,6- & 2,4+| 20 then 80|
+
+- Redistributed inertia to make model more stable and accurate to real world
+- Added anistropic friction using `contact` in MuJoCo
+- Writing a wrapper around the MuJoCo API to streamline the simulation and have beter control over each locomotion mode of the robot
+		
+		
