@@ -167,10 +167,10 @@
 
     <contact>
         <!-- For friction, making the first 2 values different results in anisotropic tangential friction, last 2 results in anisotropic rolling friction -->
-        <pair name="cylinder3a_ground" geom1="cylinder3a_con" geom2="floor" condim="3" friction="1 1 0.0005 0.0001 0.0001"/>
-        <pair name="cylinder3c_ground" geom1="cylinder3c_con" geom2="floor" condim="3" friction="1 1 0.0005 0.0001 0.0001"/>
-        <pair name="cylinder4a_ground" geom1="cylinder4a_con" geom2="floor" condim="3" friction="1 1 0.0005 0.0001 0.0001"/>
-        <pair name="cylinder4c_ground" geom1="cylinder4c_con" geom2="floor" condim="3" friction="1 1 0.0005 0.0001 0.0001"/>
+        <pair name="cylinder3a_ground" geom1="cylinder3a_con" geom2="floor" condim="3" friction="1 0.1 0.0005 0.0001 0.0001"/>
+        <pair name="cylinder3c_ground" geom1="cylinder3c_con" geom2="floor" condim="3" friction="1 0.1 0.0005 0.0001 0.0001"/>
+        <pair name="cylinder4a_ground" geom1="cylinder4a_con" geom2="floor" condim="3" friction="1 0.1 0.0005 0.0001 0.0001"/>
+        <pair name="cylinder4c_ground" geom1="cylinder4c_con" geom2="floor" condim="3" friction="1 0.1 0.0005 0.0001 0.0001"/>
     </contact>
 
     <actuator>
@@ -196,15 +196,15 @@
         <position name="spring4c_motor" group="1" joint="cylinder4c_hinge" kp="1" ctrlrange="-3.14 3.14"/>
     </actuator>
     <actuator>
-        <velocity name="spring1a_vel" group="2" joint="cylinder1a_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
-        <velocity name="spring2a_vel" group="2" joint="cylinder2a_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
-        <velocity name="spring3a_vel" group="2" joint="cylinder3a_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
-        <velocity name="spring4a_vel" group="2" joint="cylinder4a_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
+        <velocity name="spring1a_vel" group="2" joint="cylinder1a_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
+        <velocity name="spring2a_vel" group="2" joint="cylinder2a_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
+        <velocity name="spring3a_vel" group="2" joint="cylinder3a_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
+        <velocity name="spring4a_vel" group="2" joint="cylinder4a_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
 
-        <velocity name="spring1c_vel" group="2" joint="cylinder1c_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
-        <velocity name="spring2c_vel" group="2" joint="cylinder2c_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
-        <velocity name="spring3c_vel" group="2" joint="cylinder3c_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
-        <velocity name="spring4c_vel" group="2" joint="cylinder4c_hinge" kv="0.1" ctrlrange="-3.14 3.14"/>
+        <velocity name="spring1c_vel" group="2" joint="cylinder1c_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
+        <velocity name="spring2c_vel" group="2" joint="cylinder2c_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
+        <velocity name="spring3c_vel" group="2" joint="cylinder3c_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
+        <velocity name="spring4c_vel" group="2" joint="cylinder4c_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
     </actuator> 
 
     <tendon>

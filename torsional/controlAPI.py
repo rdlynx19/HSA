@@ -1,17 +1,8 @@
 import mujoco
 import mujoco.viewer
 import numpy as np
-from enum import Enum, auto
+from .states import RobotState
 import time
-
-class RobotState(Enum):
-    """
-    Enum for robot states
-    """
-    IDLE = auto()
-    EXTENDED = auto()
-
-
 
 class MuJoCoControlInterface:
     """
@@ -114,7 +105,11 @@ class MuJoCoControlInterface:
         if self.viewer is not None:
             self.viewer.sync()
 
-    def velocity_control_drive(self, actuator_names: list[str], joint_name: str, velocity: float, duration: float) -> None:
+    def velocity_control_drive(self, 
+                               actuator_names: list[str] = 
+                               ["spring3c_vel", "spring2a_vel",            "spring3a_vel", "spring2c_vel", 
+                                "spring4a_vel", "spring1c_vel", "spring4c_vel", "spring1a_vel"], 
+                               joint_name: str = "cylinder3a_hinge", velocity: float = 3.0) -> None:
         """
         Apply velocity control to specified actuators for a given duration
         """
@@ -144,8 +139,7 @@ class MuJoCoControlInterface:
                 for i, act_id in enumerate(actuator_ids):
                     if i % 2 == 0:
                         self.data.ctrl[act_id] = velocity
-                    else:
-                        self.data.ctrl[act_id] = -velocity 
+                    
 
                 self.step_simulation()
                 self.sync_viewer()

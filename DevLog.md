@@ -89,6 +89,8 @@
 	| Bending (Position Control) | 0, 1, 2, 5| 1a, 4c, 3a, 2c |0+,5- or 2+,5- or !(5+,0-) or 2+,1-| scaling_factor * 4000 (signs mentioned)|
 	| Turn (Velocity Control) | 0, 2, 4, 6| 1a, 3a, 1c, 3c|4,6+ then 0,6- & 2,4+| 20 then 80|
 
-
+- Redistributed inertia to make model more stable and accurate to real world
+- Added anistropic friction using `contact` in MuJoCo
+- Writing a wrapper around the MuJoCo API to streamline the simulation and have beter control over each locomotion mode of the robot
 		
 		
