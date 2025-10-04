@@ -147,6 +147,22 @@ class MuJoCoControlInterface:
         finally:
             self.close_simulation()
 
+    def view_model(self) -> None:
+        """
+        View the MuJoCo model in a passive viewer
+        """
+        self.launch_viewer()
+        try:
+            self.step_simulation()
+            self.sync_viewer()
+            
+            while self.viewer.is_running():
+                self.step_simulation()
+                self.sync_viewer()
+                time.sleep(self.model.opt.timestep)
+        finally:
+            self.close_simulation()
+
     def close_simulation(self) -> None:
         """
         Close the MuJoCo simulation cleanly
@@ -157,4 +173,6 @@ class MuJoCoControlInterface:
 
         if  hasattr(self, "data"):
             self.data.ctrl[:] = 0.0
+
+        
          

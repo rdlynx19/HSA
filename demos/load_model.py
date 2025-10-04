@@ -1,19 +1,18 @@
-from torsional.controlAPI import MuJoCoControlInterface
+from torsional.controlAPI import MuJoCoControlInterface, RobotState
 
 def main():
     """
-    Example usage of the MuJoCoControlInterface to control a MuJoCo model.
+    Example usage to simply load and launch a MuJoCo model.
     """
     model_path = "torsional/models/actuator_groups.xml"
     sim = MuJoCoControlInterface(model_path=model_path)
     
     # Enable actuator group 2 and disable group 1
-    sim.enable_actuator_group(2)
-    sim.disable_actuator_group(1)
+    sim.enable_actuator_group(1)
+    sim.disable_actuator_group(2)
 
-
-    try: 
-        sim.velocity_control_drive(velocity=6.0)
+    try:
+        sim.view_model()
     except KeyboardInterrupt:
         print("Simulation interrupted by user.")
     finally:
