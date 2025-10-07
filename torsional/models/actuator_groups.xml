@@ -25,7 +25,7 @@
             <!-- Cylinder 1A -->
             <body name="cylinder1a" pos="0.03 0.10 0.10">
                 <inertial pos="0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
-                <joint name="cylinder1a_hinge" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
+                <joint name="cw_cont_1a_top" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
                 <geom name="cylinder1a_con" type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" rgba="0.9 0.05 0.25 1" />
 
                 <site name="siteM1a1" pos="0.03 0.03 0.015"/>
@@ -48,7 +48,7 @@
             <!-- Cylinder 2C-->
             <body name="cylinder2c" pos="0.03 -0.10 0.10">
                 <inertial pos="0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
-                <joint name="cylinder2c_hinge" type="hinge" axis="1 0 0"/>
+                <joint name="cw_ext_2c_top" type="hinge" axis="1 0 0"/>
                 <geom name="cylinder2c_con" type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" rgba="0.0 0.5 0.175 1"/>
 
                 <site name="siteM2c1" pos="0.03 0.03 -0.015"/>
@@ -59,7 +59,7 @@
             <!-- Cylinder 3A -->
             <body name="cylinder3a" pos="0.03 -0.10 -0.10">
                 <inertial pos="0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
-                <joint name="cylinder3a_hinge" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
+                <joint name="cw_cont_3a_btm" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
                 <geom name="cylinder3a_con" type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" rgba="0.9 0.9 0.02 1"/>
             
                 <site name="siteM3a1" pos="0.03 0.03 0.015"/>
@@ -82,8 +82,8 @@
             <!-- Cylinder 4C-->
             <body name="cylinder4c" pos="0.03 0.10 -0.10">
                 <inertial pos="0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
+                <joint name="cw_ext_4c_btm" type="hinge" axis="1 0 0"/>
                 <geom name="cylinder4c_con" type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" />
-                <joint name="cylinder4c_hinge" type="hinge" axis="1 0 0"/>
                 <site name="siteM4c1" pos="0.03 0.03 -0.015"/>
                 <site name="siteM4c2" pos="0.03 -0.03 0.015"/>
             </body>
@@ -99,8 +99,8 @@
             <!-- Cylinder 1C -->
             <body name="cylinder1c" pos="-0.03 0.10 0.10">
                 <inertial pos="-0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
+                <joint name="cw_ext_1c_top" type="hinge" axis="1 0 0"/>
                 <geom name="cylinder1c_con" type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" rgba="0.9 0.05 0.25 1"/>
-                <joint name="cylinder1c_hinge" type="hinge" axis="1 0 0"/>
 
                 <site name="siteM1c1" pos="-0.03 0.03 -0.015"/>
                 <site name="siteM1c2" pos="-0.03 -0.03 0.015"/>
@@ -109,8 +109,8 @@
             <!-- Cylinder 3C-->
             <body name="cylinder3c" pos="-0.03 -0.10 -0.10">
                 <inertial pos="-0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
+                <joint name="cw_ext_3c_btm" type="hinge" axis="1 0 0"/>
                 <geom name="cylinder3c_con" type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" rgba="0.9 0.9 0.02 1"/>
-                <joint name="cylinder3c_hinge" type="hinge" axis="1 0 0"/>
 
                 <site name="siteM3c1" pos="-0.03 0.03 -0.015"/>
                 <site name="siteM3c2" pos="-0.03 -0.03 0.015"/>
@@ -119,7 +119,7 @@
             <!-- Cylinder 2A -->
             <body name="cylinder2a" pos="-0.03 -0.10 0.10">
                 <inertial pos="-0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
-                <joint name="cylinder2a_hinge" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
+                <joint name="cw_cont_2a_top" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
                 <geom name="cylinder2a_con" type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" rgba="0.0 0.5 0.175 1"/>
         
                 <site name="siteM2a1" pos="-0.03 0.03 0.015"/>
@@ -143,7 +143,7 @@
             <!-- Cylinder4A -->
             <body name="cylinder4a" pos="-0.03 0.10 -0.10">
                 <inertial pos="-0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
-                <joint name="cylinder4a_hinge" type="hinge" axis="1 0 0" limited="true" range="0 3.14" />
+                <joint name="cw_cont_4a_btm" type="hinge" axis="1 0 0" limited="true" range="0 3.14" />
                 <geom name="cylinder4a_con" type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" />
                 
                 <site name="siteM4a1" pos="-0.03 0.03 0.015"/>
@@ -175,37 +175,37 @@
     </contact>
 
     <actuator>
-        <motor name="spring1a_torque" group="0" joint="cylinder1a_hinge" gear="0.05" ctrlrange="-5 5"/>
-        <motor name="spring2a_torque" group="0" joint="cylinder2a_hinge" gear="0.05" ctrlrange="-5 5"/>
-        <motor name="spring3a_torque" group="0" joint="cylinder3a_hinge" gear="0.05" ctrlrange="-5 5"/>
-        <motor name="spring4a_torque" group="0" joint="cylinder4a_hinge" gear="0.05" ctrlrange="-5 5"/>
+        <motor name="spring1a_torque" group="0" joint="cw_cont_1a_top" gear="0.05" ctrlrange="-5 5"/>
+        <motor name="spring2a_torque" group="0" joint="cw_cont_2a_top" gear="0.05" ctrlrange="-5 5"/>
+        <motor name="spring3a_torque" group="0" joint="cw_cont_3a_btm" gear="0.05" ctrlrange="-5 5"/>
+        <motor name="spring4a_torque" group="0" joint="cw_cont_4a_btm" gear="0.05" ctrlrange="-5 5"/>
 
-        <motor name="spring1c_torque" group="0" joint="cylinder1c_hinge" gear="0.05" ctrlrange="-5 5"/>
-        <motor name="spring2c_torque" group="0" joint="cylinder2c_hinge" gear="0.05" ctrlrange="-5 5"/>
-        <motor name="spring3c_torque" group="0" joint="cylinder3c_hinge" gear="0.05" ctrlrange="-5 5"/>
-        <motor name="spring4c_torque" group="0" joint="cylinder4c_hinge" gear="0.05" ctrlrange="-5 5"/>
+        <motor name="spring1c_torque" group="0" joint="cw_ext_1c_top" gear="0.05" ctrlrange="-5 5"/>
+        <motor name="spring2c_torque" group="0" joint="cw_ext_2c_top" gear="0.05" ctrlrange="-5 5"/>
+        <motor name="spring3c_torque" group="0" joint="cw_ext_3c_btm" gear="0.05" ctrlrange="-5 5"/>
+        <motor name="spring4c_torque" group="0" joint="cw_ext_4c_btm" gear="0.05" ctrlrange="-5 5"/>
     </actuator>
     <actuator>
-        <position name="spring1a_motor" group="1" joint="cylinder1a_hinge" kp="1" ctrlrange="0 3.14"/>
-        <position name="spring2a_motor" group="1" joint="cylinder2a_hinge" kp="1" ctrlrange="0 3.14"/>
-        <position name="spring3a_motor" group="1" joint="cylinder3a_hinge" kp="1" ctrlrange="0 3.14"/>
-        <position name="spring4a_motor" group="1" joint="cylinder4a_hinge" kp="1" ctrlrange="0 3.14"/>
+        <position name="spring1a_motor" group="1" joint="cw_cont_1a_top" kp="1" ctrlrange="0 3.14"/>
+        <position name="spring2a_motor" group="1" joint="cw_cont_2a_top" kp="1" ctrlrange="0 3.14"/>
+        <position name="spring3a_motor" group="1" joint="cw_cont_3a_btm" kp="1" ctrlrange="0 3.14"/>
+        <position name="spring4a_motor" group="1" joint="cw_cont_4a_btm" kp="1" ctrlrange="0 3.14"/>
         
-        <position name="spring1c_motor" group="1" joint="cylinder1c_hinge" kp="1" ctrlrange="-3.14 0"/>
-        <position name="spring2c_motor" group="1" joint="cylinder2c_hinge" kp="1" ctrlrange="-3.14 0"/>
-        <position name="spring3c_motor" group="1" joint="cylinder3c_hinge" kp="1" ctrlrange="-3.14 0"/>
-        <position name="spring4c_motor" group="1" joint="cylinder4c_hinge" kp="1" ctrlrange="-3.14 0"/>
+        <position name="spring1c_motor" group="1" joint="cw_ext_1c_top" kp="1" ctrlrange="-3.14 0"/>
+        <position name="spring2c_motor" group="1" joint="cw_ext_2c_top" kp="1" ctrlrange="-3.14 0"/>
+        <position name="spring3c_motor" group="1" joint="cw_ext_3c_btm" kp="1" ctrlrange="-3.14 0"/>
+        <position name="spring4c_motor" group="1" joint="cw_ext_4c_btm" kp="1" ctrlrange="-3.14 0"/>
     </actuator>
     <actuator>
-        <velocity name="spring1a_vel" group="2" joint="cylinder1a_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
-        <velocity name="spring2a_vel" group="2" joint="cylinder2a_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
-        <velocity name="spring3a_vel" group="2" joint="cylinder3a_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
-        <velocity name="spring4a_vel" group="2" joint="cylinder4a_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
+        <velocity name="spring1a_vel" group="2" joint="cw_cont_1a_top" kv="0.1" ctrlrange="-3.14 6.28"/>
+        <velocity name="spring2a_vel" group="2" joint="cw_cont_2a_top" kv="0.1" ctrlrange="-3.14 6.28"/>
+        <velocity name="spring3a_vel" group="2" joint="cw_cont_3a_btm" kv="0.1" ctrlrange="-3.14 6.28"/>
+        <velocity name="spring4a_vel" group="2" joint="cw_cont_4a_btm" kv="0.1" ctrlrange="-3.14 6.28"/>
 
-        <velocity name="spring1c_vel" group="2" joint="cylinder1c_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
-        <velocity name="spring2c_vel" group="2" joint="cylinder2c_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
-        <velocity name="spring3c_vel" group="2" joint="cylinder3c_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
-        <velocity name="spring4c_vel" group="2" joint="cylinder4c_hinge" kv="0.1" ctrlrange="-3.14 6.28"/>
+        <velocity name="spring1c_vel" group="2" joint="cw_ext_1c_top" kv="0.1" ctrlrange="-3.14 6.28"/>
+        <velocity name="spring2c_vel" group="2" joint="cw_ext_2c_top" kv="0.1" ctrlrange="-3.14 6.28"/>
+        <velocity name="spring3c_vel" group="2" joint="cw_ext_3c_btm" kv="0.1" ctrlrange="-3.14 6.28"/>
+        <velocity name="spring4c_vel" group="2" joint="cw_ext_4c_btm" kv="0.1" ctrlrange="-3.14 6.28"/>
     </actuator> 
 
     <tendon>
