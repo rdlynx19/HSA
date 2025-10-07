@@ -223,36 +223,80 @@ class MuJoCoControlInterface:
         self.launch_viewer()
         try:
             self.data.ctrl[:] = 0.0
-
             self.step_simulation()
             self.sync_viewer()
 
-            extending = True
+            total_steps = 10
+            # Define extension and contraction targets
+            start_ctrl = np.zeros(len(actuator_ids))
+            target_ctrl = np.array([position if i % 2 == 0 else -position for i in range(len(actuator_ids))])
+
 
             while self.viewer.is_running():                    
-                    joint_id = actuator_to_joint_ids[actuator_id] # check a representative joint
-                    qpos_adr = self.model.jnt_qposadr[joint_id]
-                    joint_pos = self.data.qpos[qpos_adr]
+                    # Extension phase
+                    trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration=15, timestep=self.model.opt.timestep, method="quadratic")       
+                    for step_values in trajectory:
+                        self.data.ctrl[actuator_ids] = step_values
+                        self.step_simulation()            
+                        self.sync_viewer()    
 
-                    # Phase switching
-                    if extending and abs(joint_pos) >= position - tolerance:
-                        extending = False
-                    elif not extending and abs(joint_pos) <= tolerance:
-                        extending = True
+                    # Hold for a short duration
+                    for _ in range(int(0.5 / self.model.opt.timestep)):
+                        self.step_simulation()
+                        self.sync_viewer()
 
-                    # Control commands
-                    if extending:
-                        for i, act_id in enumerate(actuator_ids):
-                            self.data.ctrl[act_id] = position if i%2 == 0 else -position
-                    else:
-                        for act_id in actuator_ids:
-                            self.data.ctrl[act_id] = 0.0
-                    
-                    self.step_simulation()
-                    self.sync_viewer()
-                    time.sleep(self.model.opt.timestep)
+                    # Contraction phase
+                    trajectory = self.interpolate_values(target_ctrl, start_ctrl, 15, self.model.opt.timestep, "quadratic")
+                    for step_values in trajectory:
+                        self.data.ctrl[actuator_ids] = step_values
+                        self.step_simulation()
+                        self.sync_viewer()
+
+                    # Hold for short duration
+                    for _ in range(int(0.5 / self.model.opt.timestep)):
+                        self.step_simulation()
+                        self.sync_viewer()
+                    # time.sleep(self.model.opt.timestep)
         finally:
             self.close_simulation()
+
+    def interpolate_values(self, start: np.ndarray = None,
+                           goal: np.ndarray = None,
+                           duration: float = None,
+                           timestep: float = None,
+                           method: str = "linear") -> np.ndarray:
+        """
+        Generate interpolated values between start and goal over a given duration
+
+        :param start: Starting value or interpolation lower limit
+        :param goal: Goal value or interpolation upper limit
+        :param duration: Total transition time
+        :param timestep: Simulation time step
+        :param method: Interpolation type - linear, cosine, smoothstep, quadratic
+
+        :return: np.ndarray of interpolated values for each time step
+        """
+        steps = max(2, int(duration/timestep))
+        alphas = np.linspace(0, 1, steps) # progress fraction
+
+        if method == "cosine":
+            alphas = 0.5 * (1 - np.cos(np.pi * alphas))
+        elif method == "smoothstep":
+            alphas = alphas * alphas * (3 - 2 * alphas)
+        elif method == "quadratic":
+            alphas = alphas ** 2
+        elif method == "linear":
+            pass # Leave alphas unchanged / Use original definition of alphas
+        else:
+            raise ValueError(f"Unknown interpolation method: {method}")
+        
+        # Converting inputs to numpy arrays
+        start = np.array(start, dtype=float)
+        goal = np.array(goal, dtype=float)
+
+        interpolated = np.outer(1 - alphas, start) + np.outer(alphas, goal)
+
+        return interpolated
 
 
     def view_model(self) -> None:
