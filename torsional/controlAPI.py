@@ -109,7 +109,8 @@ class MuJoCoControlInterface:
                                actuator_names: list[str] = 
                                ["spring3c_vel", "spring2a_vel",            "spring3a_vel", "spring2c_vel", 
                                 "spring4a_vel", "spring1c_vel", "spring4c_vel", "spring1a_vel"], 
-                               joint_name: str = "cylinder3a_hinge", velocity: float = 3.0) -> None:
+                               joint_name: str = "cw_cont_3a_btm", 
+                               velocity: float = 3.0) -> None:
         """
         Apply velocity control to specified actuators for a given duration
         """
@@ -146,6 +147,113 @@ class MuJoCoControlInterface:
                 time.sleep(self.model.opt.timestep)
         finally:
             self.close_simulation()
+
+    def position_control_extension(self,
+                                   actuator_names: list[str] = 
+                                   ["spring1a_motor", "spring1c_motor",
+                                    "spring3a_motor", "spring3c_motor",
+                                    "spring2a_motor", "spring2c_motor",
+                                    "spring4a_motor", "spring4c_motor"],
+                                    joint_name: str = "cw_cont_3a_btm",
+                                    position: float = 2.84) -> None:
+        """
+        Apply position control to obtain an extension motion
+        """
+        self.disable_actuator_group(2)
+        self.enable_actuator_group(1) # Enabling position control
+
+        actuator_ids = []
+        for name in actuator_names:
+            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
+            if actuator_id < 0:
+                raise ValueError(f"Actuator '{name}' not found in the model.")
+            actuator_ids.append(actuator_id)
+
+        joint_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, joint_name)
+        if joint_id < 0:
+            raise ValueError(f"Joint '{joint_name}' not found in the model.")
+
+        self.launch_viewer()
+        try:
+            self.data.ctrl[:] = 0.0
+
+            self.step_simulation()
+            self.sync_viewer()
+
+
+            while self.viewer.is_running():                    
+                    for i, act_id in enumerate(actuator_ids):
+                        if i % 2 == 0:
+                            self.data.ctrl[act_id] =  position
+                        else:
+                            self.data.ctrl[act_id] = -position
+                
+                    self.step_simulation()
+                    self.sync_viewer()
+                    time.sleep(self.model.opt.timestep)
+        finally:
+            self.close_simulation()
+
+        
+    def position_control_crawl(self,
+                               actuator_names: list[str] = 
+                                ["spring1a_motor", "spring1c_motor",
+                                "spring3a_motor", "spring3c_motor",
+                                "spring2a_motor", "spring2c_motor",
+                                "spring4a_motor", "spring4c_motor"],
+                                position: float = 2.84,
+                                tolerance: float = 0.05) -> None:
+        """
+        Perform crawling action by repeated contraction and extension
+        """
+        self.disable_actuator_group(2)
+        self.enable_actuator_group(1) # Enabling position control
+
+        actuator_ids = []
+        actuator_to_joint_ids = {}
+        for name in actuator_names:
+            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
+            if actuator_id < 0:
+                raise ValueError(f"Actuator '{name}' not found in the model.")
+            actuator_ids.append(actuator_id)
+            joint_id = self.model.actuator_trnid[actuator_id, 0]
+            print(f"Joint ID: {joint_id}")
+            actuator_to_joint_ids[actuator_id] = joint_id
+
+        self.launch_viewer()
+        try:
+            self.data.ctrl[:] = 0.0
+
+            self.step_simulation()
+            self.sync_viewer()
+
+            extending = True
+
+            while self.viewer.is_running():                    
+                    joint_id = actuator_to_joint_ids[actuator_id] # check a representative joint
+                    qpos_adr = self.model.jnt_qposadr[joint_id]
+                    joint_pos = self.data.qpos[qpos_adr]
+
+                    # Phase switching
+                    if extending and abs(joint_pos) >= position - tolerance:
+                        extending = False
+                    elif not extending and abs(joint_pos) <= tolerance:
+                        extending = True
+
+                    # Control commands
+                    if extending:
+                        for i, act_id in enumerate(actuator_ids):
+                            self.data.ctrl[act_id] = position if i%2 == 0 else -position
+                    else:
+                        for act_id in actuator_ids:
+                            self.data.ctrl[act_id] = 0.0
+                    
+                    self.step_simulation()
+                    self.sync_viewer()
+                    time.sleep(self.model.opt.timestep)
+        finally:
+            self.close_simulation()
+
 
     def view_model(self) -> None:
         """
