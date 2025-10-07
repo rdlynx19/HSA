@@ -1,0 +1,73 @@
+<mujoco model="single_actuator">
+    <option timestep="0.001"/>
+    <size njmax="200" nconmax="100"/>
+
+    <asset>
+        <texture name="grid" type="2d" builtin="checker" width="300" height="300"
+             rgb1="0.8 0.8 0.8" rgb2="0.5 0.5 0.5" mark="edge" markrgb="0.2 0.2 0.2"/>
+        <material name="gridmat" texture="grid" texrepeat="5 5" reflectance="0.1"/>
+    </asset>
+
+    <worldbody>
+        <geom name="floor" type="plane" size="5 5 0.1" material="gridmat" friction="0.2 0.02 0.01"/> 
+
+        <body name="block_a" pos="-0.2 0 0.2">
+            <!-- Cable 1 A -->
+            <joint name="blocka_slide" type="slide" axis="1 0 0"/>
+            <inertial pos="0.04 0 0" mass="2.4" diaginertia="0.001 0.01 0.01"/>
+            <geom type="box" size="0.03 0.12 0.12" mass="2.4" friction="0.2 0.02 0.01" rgba="0.2 0.6 0.9 1"/>
+            <body name="spring_1a" pos="0.05 0.07 0.065">
+                <joint name="spring1a_hinge" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
+                <!-- <joint name="spring1a_hinge" type="hinge" axis="1 0 0" /> -->
+                <geom type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" density="150" />
+
+                <site name="siteM1a1" pos="0.05 0.03 0.015"/>
+                <site name="siteM1a2" pos="0.05 -0.03 -0.015"/>
+            </body>
+
+            <body name="spring_1b" pos="0.175 0.07 0.065">
+                <geom type="cylinder" fromto="0 0 0 0.02 0 0" size="0.08" density="150"/>
+                <joint name="spring1b_hinge" type="hinge" axis="1 0 0"/>
+                <site name="siteM1b1" pos="0 -0.075 -0.015"/>
+                <site name="siteM1b2" pos="0 0.075 0.015"/>
+
+                <site name="siteM1b3" pos="0.02 -0.075 0.015"/>
+                <site name="siteM1b4" pos="0.02 0.075 -0.015"/>
+            </body>
+        </body>
+        <body name="block_b" pos="0.2 0 0.2">
+        <!-- Cable 1 C-->
+            <body name="spring_1c" pos="-0.05 0.07 0.065">
+                <geom type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" density="150"/>
+                <joint name="spring1c_hinge" type="hinge" axis="1 0 0"/>
+                <site name="siteM1c1" pos="-0.05 0.03 -0.015"/>
+                <site name="siteM1c2" pos="-0.05 -0.03 0.015"/>
+            </body>
+        </body>
+    </worldbody>
+
+    <actuator>
+        <position name="spring1a_motor" joint="spring1a_hinge" kp="10" ctrlrange="-3.14 3.14"/>
+        <position name="spring1c_motor" joint="spring1c_hinge" kp="10" ctrlrange="-3.14 3.14"/>
+    </actuator>
+
+    <tendon>
+        <spatial name="inter1a1" width="0.005" rgba="0 1 0 1" stiffness="5000" damping="25">
+            <site site="siteM1a1"/>
+            <site site="siteM1b1"/>
+        </spatial>
+        <spatial name="inter1a2" width="0.005" rgba="0 1 0 1" stiffness="5000" damping="25">
+            <site site="siteM1a2"/>
+            <site site="siteM1b2"/>
+        </spatial>
+        <spatial name="inter1b1" width="0.005" rgba="0 1 0 1" stiffness="5000" damping="25">
+            <site site="siteM1b3"/>
+            <site site="siteM1c1"/>
+        </spatial>
+        <spatial name="inter1b2" width="0.005" rgba="0 1 0 1" stiffness="5000" damping="25">
+            <site site="siteM1b4"/>
+            <site site="siteM1c2"/>
+        </spatial>
+    </tendon>
+
+</mujoco>
