@@ -264,7 +264,7 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.model.opt.timestep)
 
-            self.set_robot_state(RobotState.EXTENDED)
+            self.set_robot_state(RobotState.IDLE)
                       
             self.step_simulation()
             self.sync_viewer()
