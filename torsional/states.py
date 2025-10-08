@@ -4,6 +4,9 @@ class RobotState(Enum):
     """
     Enum for robot states
     """
-    IDLE = auto()
+    IDLE = auto() 
     EXTENDED = auto()
-    DRIVE = auto()
+    DRIVING = auto()
+    TWISTING = auto() # not implemented
+    BENDING = auto() # not implemented
+    
