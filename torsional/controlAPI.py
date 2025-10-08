@@ -221,6 +221,57 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unknown exception: {e}")
    
+    def position_control_contraction(self, 
+                                    actuator_names: list[str] = 
+                                   ["spring1a_motor", "spring1c_motor",
+                                    "spring3a_motor", "spring3c_motor",
+                                    "spring2a_motor", "spring2c_motor",
+                                    "spring4a_motor", "spring4c_motor"],
+                                    duration: float = 15.0) -> None:
+        """
+        Apply position control to bring back the robot to its original state
+        """
+        if self.get_robot_state() == RobotState.IDLE:
+            print("[WARN] Robot is already in idle state. Ignoring duplicate request!")
+            return
+
+        self.disable_actuator_group(2)
+        self.enable_actuator_group(1) # Enabling position control
+
+        actuator_ids = []
+        for name in actuator_names:
+            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
+            if actuator_id < 0:
+                raise ValueError(f"Actuator '{name}' not found in the model.")
+            actuator_ids.append(actuator_id)
+
+        if self.viewer is None:
+            self.start_simulation()
+        try:
+
+            self.step_simulation()
+            self.sync_viewer()
+
+            start_ctrl = np.copy(self.data.ctrl[actuator_ids])
+            target_ctrl = np.zeros(len(actuator_ids))
+
+            # Generate interpolated trajectory
+            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.model.opt.timestep, "linear")
+
+            for step_values in trajectory:
+                self.data.ctrl[actuator_ids] = step_values
+                self.step_simulation()
+                self.sync_viewer()
+                time.sleep(self.model.opt.timestep)
+
+            self.set_robot_state(RobotState.EXTENDED)
+                      
+            self.step_simulation()
+            self.sync_viewer()
+            time.sleep(self.model.opt.timestep)
+        except Exception as e:
+            print(f"Unknown exception: {e}")
+
     def position_control_crawl(self,
                                actuator_names: list[str] = 
                                 ["spring1a_motor", "spring1c_motor",
