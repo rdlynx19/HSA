@@ -129,8 +129,8 @@ class MuJoCoControlInterface:
     def velocity_control_drive(self, 
                                actuator_names: list[str] = 
                                ["spring3c_vel", "spring2a_vel",            "spring3a_vel", "spring2c_vel", 
-                                "spring4a_vel", "spring1c_vel", "spring4c_vel", "spring1a_vel"], 
-                               joint_name: str = "cw_cont_3a_btm", 
+                                "spring4a_vel", "spring1c_vel", "spring4c_vel", "spring1a_vel"],
+                                duration: float = 3.0,
                                velocity: float = 3.0) -> None:
         """
         Apply velocity control to specified actuators for a given duration
@@ -144,10 +144,6 @@ class MuJoCoControlInterface:
             if actuator_id < 0:
                 raise ValueError(f"Actuator '{name}' not found in the model.")
             actuator_ids.append(actuator_id)
-
-        joint_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, joint_name)
-        if joint_id < 0:
-            raise ValueError(f"Joint '{joint_name}' not found in the model.")
         
         if self.viewer is None:
             self.start_simulation()
@@ -155,10 +151,18 @@ class MuJoCoControlInterface:
             self.step_simulation()
             self.sync_viewer()
             
-            for i, act_id in enumerate(actuator_ids):
-                if i % 2 == 0:
-                    self.data.ctrl[act_id] = velocity
-                    
+            start_ctrl = np.zeros(len(actuator_ids))
+            target_ctrl = np.array([velocity if i % 2 == 0 else 0 for i in range(len(actuator_ids))])
+            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.model.opt.timestep, "smoothstep")
+
+            for step_values in trajectory:
+                self.data.ctrl[actuator_ids] = step_values
+                self.step_simulation()
+                self.sync_viewer()
+                time.sleep(self.model.opt.timestep)
+
+            self.set_robot_state(RobotState.DRIVING)
+
             self.step_simulation()
             self.sync_viewer()
             time.sleep(self.model.opt.timestep)
@@ -216,8 +220,7 @@ class MuJoCoControlInterface:
             time.sleep(self.model.opt.timestep)
         except Exception as e:
             print(f"Unknown exception: {e}")
-
-        
+   
     def position_control_crawl(self,
                                actuator_names: list[str] = 
                                 ["spring1a_motor", "spring1c_motor",
