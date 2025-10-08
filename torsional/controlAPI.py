@@ -239,7 +239,7 @@ class MuJoCoControlInterface:
                                     "spring3a_motor", "spring3c_motor",
                                     "spring2a_motor", "spring2c_motor",
                                     "spring4a_motor", "spring4c_motor"],
-                                    duration: float = 15.0) -> None:
+                                    duration: float = 0.5) -> None:
         """
         Apply position control to bring back the robot to its original state
         """
@@ -290,7 +290,7 @@ class MuJoCoControlInterface:
                                 "spring3a_motor", "spring3c_motor",
                                 "spring2a_motor", "spring2c_motor",
                                 "spring4a_motor", "spring4c_motor"],
-                                duration: float = 15.0,
+                                duration: float = 0.5,
                                 position: float = 2.84) -> None:
         """
         Perform crawling action by repeated contraction and extension
@@ -319,37 +319,11 @@ class MuJoCoControlInterface:
             self.step_simulation()
             self.sync_viewer()
 
-            # Define extension and contraction targets
-            start_ctrl = np.zeros(len(actuator_ids))
-            target_ctrl = np.array([position if i % 2 == 0 else -position for i in range(len(actuator_ids))])
+            while self.viewer.is_running():
+                self.position_control_extension(duration=0.5, position=1.57)   
+                self.position_control_contraction(duration=0.5)
+           
 
-            # Extension phase
-            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration=duration, timestep=self.model.opt.timestep, method="quadratic")       
-            for step_values in trajectory:
-                self.data.ctrl[actuator_ids] = step_values
-                self.step_simulation()            
-                self.sync_viewer()
-                time.sleep(self.model.opt.timestep)    
-
-            # Hold for a short duration
-            for _ in range(int(0.5 / self.model.opt.timestep)):
-                self.step_simulation()
-                self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
-
-            # Contraction phase
-            trajectory = self.interpolate_values(target_ctrl, start_ctrl, duration, self.model.opt.timestep, "quadratic")
-            for step_values in trajectory:
-                self.data.ctrl[actuator_ids] = step_values
-                self.step_simulation()
-                self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
-
-            # Hold for short duration
-            for _ in range(int(0.5 / self.model.opt.timestep)):
-                self.step_simulation()
-                self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
         except Exception as e:
             print(f"Unknown error: {e}")
 
