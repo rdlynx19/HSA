@@ -4,12 +4,12 @@ def main():
     """
     Example usage to simply load and launch a MuJoCo model.
     """
-    model_path = "torsional/models/actuator_groups.xml"
+    model_path = "torsional/models/closer_model.xml"
     sim = MuJoCoControlInterface(model_path=model_path)
     
     # Enable actuator group 2 and disable group 1
-    sim.enable_actuator_group(1)
-    sim.disable_actuator_group(2)
+    sim.enable_actuator_group(2)
+    sim.disable_actuator_group(1)
 
     try:
         sim.view_model()

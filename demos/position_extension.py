@@ -4,7 +4,7 @@ def main():
     """
     Example usage of extension using position control
     """
-    model_path = "torsional/models/actuator_groups.xml"
+    model_path = "torsional/models/closer_model.xml"
     sim = MuJoCoControlInterface(model_path=model_path)
 
     # Enable actautor group 1 and disable group 2

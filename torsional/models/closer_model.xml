@@ -1,4 +1,4 @@
-<mujoco model="actuatorGroups">
+<mujoco model="closerModel">
     <compiler angle="radian" />
     <option timestep="0.001" actuatorgroupdisable="0 1 2" />
     
@@ -35,13 +35,13 @@
             <!-- Disc 1B -->
             <body name="disc1b" pos="0.175 0.10 0.10">
                 <inertial pos="0.025 0 0" mass="0.1" diaginertia="0.0001 0.000225 0.000225"/>
-                <geom name="disc1b_con" type="cylinder" fromto="0 0 0 0.02 0 0" size="0.14"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
+                <geom name="disc1b_con" type="cylinder" fromto="0 0 0 0.02 0 0" size="0.17"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
                 <joint name="spring1b_hinge" type="hinge" axis="1 0 0"/>
-                <site name="siteM1b1" pos="0 -0.135 -0.015"/>
-                <site name="siteM1b2" pos="0 0.135 0.015"/>
+                <site name="siteM1b1" pos="0 -0.165 -0.015"/>
+                <site name="siteM1b2" pos="0 0.165 0.015"/>
 
-                <site name="siteM1b3" pos="0.02 -0.135 0.015"/>
-                <site name="siteM1b4" pos="0.02 0.135 -0.015"/>
+                <site name="siteM1b3" pos="0.02 -0.165 0.015"/>
+                <site name="siteM1b4" pos="0.02 0.165 -0.015"/>
             </body>
 
             
@@ -70,13 +70,13 @@
             <!-- Disc 3B-->
             <body name="disc3b" pos="0.175 -0.10 -0.10">
                 <inertial pos="0.025 0 0" mass="0.1" diaginertia="0.0001 0.000225 0.000225"/> 
-                <geom name="disc3b_con" type="cylinder" fromto="0 0 0 0.02 0 0" size="0.14"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
+                <geom name="disc3b_con" type="cylinder" fromto="0 0 0 0.02 0 0" size="0.17"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
                 <joint name="disc3b_hinge" type="hinge" axis="1 0 0"/>
-                <site name="siteM3b1" pos="0.0 -0.135 -0.015"/>
-                <site name="siteM3b2" pos="0.0 0.135 0.015"/>
+                <site name="siteM3b1" pos="0.0 -0.165 -0.015"/>
+                <site name="siteM3b2" pos="0.0 0.165 0.015"/>
                 
-                <site name="siteM3b3" pos="0.02 -0.135 0.015"/>
-                <site name="siteM3b4" pos="0.02 0.135 -0.015"/>
+                <site name="siteM3b3" pos="0.02 -0.165 0.015"/>
+                <site name="siteM3b4" pos="0.02 0.165 -0.015"/>
             </body>
 
             <!-- Cylinder 4C-->
@@ -129,13 +129,13 @@
             <!-- Disc 2B -->
             <body name="disc2b" pos="-0.175 -0.10 0.10">
                 <inertial pos="-0.025 0 0" mass="0.1" diaginertia="0.0001 0.000225 0.000225"/>
-                <geom name="disc2b_con" type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.14"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
+                <geom name="disc2b_con" type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.17"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
                 <joint name="disc2b_hinge" type="hinge" axis="1 0 0"/>
-                <site name="siteM2b1" pos="0 -0.135 -0.015"/>
-                <site name="siteM2b2" pos="0 0.135 0.015"/> 
+                <site name="siteM2b1" pos="0 -0.165 -0.015"/>
+                <site name="siteM2b2" pos="0 0.165 0.015"/> 
 
-                <site name="siteM2b3" pos="-0.02 -0.135 0.015"/>
-                <site name="siteM2b4" pos="-0.02 0.135 -0.015"/>       
+                <site name="siteM2b3" pos="-0.02 -0.165 0.015"/>
+                <site name="siteM2b4" pos="-0.02 0.165 -0.015"/>       
             </body>
 
 
@@ -153,13 +153,13 @@
             <!-- Disc4B -->
             <body name="disc4b" pos="-0.175 0.10 -0.10">
                 <inertial pos="-0.025 0 0" mass="0.1" diaginertia="0.0001 0.000225 0.000225"/>
-                <geom name="disc4b_con" type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.14"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
+                <geom name="disc4b_con" type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.17"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
                 <joint name="disc4b_hinge" type="hinge" axis="1 0 0"/>
-                <site name="siteM4b1" pos="0 -0.135 -0.015"/>
-                <site name="siteM4b2" pos="0 0.135 0.015"/>
+                <site name="siteM4b1" pos="0 -0.165 -0.015"/>
+                <site name="siteM4b2" pos="0 0.165 0.015"/>
 
-                <site name="siteM4b3" pos="-0.02 -0.135 0.015"/>
-                <site name="siteM4b4" pos="-0.02 0.135 -0.015"/>
+                <site name="siteM4b3" pos="-0.02 -0.165 0.015"/>
+                <site name="siteM4b4" pos="-0.02 0.165 -0.015"/>
             </body>
 
         </body>

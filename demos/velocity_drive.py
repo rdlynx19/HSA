@@ -11,13 +11,10 @@ def main():
     sim.enable_actuator_group(2)
     sim.disable_actuator_group(1)
 
-
     try: 
         sim.start_simulation()
-        sim.velocity_control_drive(velocity=6.0)
-        sim.position_control_contraction()
-        sim.position_control_extension(position=2.84)
-        sim.close_simulation()
+        sim.velocity_control_drive(velocity=6.0) 
+        # sim.close_simulation()
     except KeyboardInterrupt:
         print("Simulation interrupted by user.")
 
