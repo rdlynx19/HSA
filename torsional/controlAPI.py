@@ -327,6 +327,58 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unknown error: {e}")
 
+    def position_control_twist1(self, 
+                                actuator_names: list[str] = 
+                                ["spring2c_motor", "spring4c_motor"],
+                                duration: float = 0.5,
+                                position: float = 2.84) -> None:
+        """
+        Perform twisting motion in one direction
+        """
+        if self.get_robot_state() == RobotState.EXTENDED:
+            print("[WARN] Robot is already in extended state. Ignoring duplicate request!")
+            return
+        
+        self.disable_actuator_group(2)
+        self.enable_actuator_group(1) # Enabling position control
+
+        actuator_ids = []
+        actuator_to_joint_ids = {}
+        for name in actuator_names:
+            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
+            if actuator_id < 0:
+                raise ValueError(f"Actuator '{name}' not found in the model.")
+            actuator_ids.append(actuator_id)
+            joint_id = self.model.actuator_trnid[actuator_id, 0]
+            print(f"Joint ID: {joint_id}")
+            actuator_to_joint_ids[actuator_id] = joint_id
+
+        if self.viewer is None:
+            self.start_simulation()
+        try:
+            self.step_simulation()
+            self.sync_viewer()
+
+            start_ctrl = np.zeros(len(actuator_ids))
+            target_ctrl = np.array([-position for i in range(len(actuator_ids))])
+
+            # Generate interpolated trajectory
+            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.model.opt.timestep, "linear")
+
+            for step_values in trajectory:
+                self.data.ctrl[actuator_ids] = step_values
+                self.step_simulation()
+                self.sync_viewer()
+                time.sleep(self.model.opt.timestep)
+              
+                
+            while self.viewer.is_running():
+                self.step_simulation()
+                self.sync_viewer()
+                time.sleep(self.model.opt.timestep)
+
+        except Exception as e:
+            print(f"Unknown error: {e}")
 
     def interpolate_values(self, start: np.ndarray = None,
                            goal: np.ndarray = None,
