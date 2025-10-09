@@ -8,8 +8,8 @@ def main():
     sim = MuJoCoControlInterface(model_path=model_path)
     
     # Enable actuator group 2 and disable group 1
-    sim.enable_actuator_group(2)
-    sim.disable_actuator_group(1)
+    sim.enable_actuator_group(1)
+    sim.disable_actuator_group(2)
 
     try:
         sim.view_model()
