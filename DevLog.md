@@ -93,4 +93,7 @@
 - Added anistropic friction using `contact` in MuJoCo
 - Writing a wrapper around the MuJoCo API to streamline the simulation and have beter control over each locomotion mode of the robot
 		
-		
+### Mujoco (Week 9 10/2 - 10/9)
+- More progress on the wrapper, now we have driving, crawling, extension, contraction, bending and twisting functions
+- Improvements are needed in making the motions more realistic to the real robots
+- Added state machine, with different states - need to encode valid transitions

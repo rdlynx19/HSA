@@ -282,10 +282,10 @@ class MuJoCoControlInterface:
             self.sync_viewer()
             time.sleep(self.model.opt.timestep)
 
-            while self.viewer.is_running():
-                self.step_simulation()
-                self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
+            # while self.viewer.is_running():
+            #     self.step_simulation()
+            #     self.sync_viewer()
+            #     time.sleep(self.model.opt.timestep)
         except Exception as e:
             print(f"Unknown exception: {e}")
 
