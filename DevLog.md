@@ -73,7 +73,7 @@
 	- Position control
 	- Velocity control
 - Enabled toggling for enabling and disabling groups of actuators i.e. switching between position control, torque control, and velocity control
-- Corresponding Motor IDs: 0(1a) 1(4c) 2(3a) 5(2c) 4(1c) 3(4a) 6(3b) 7(2a)
+- Corresponding Motor IDs: 0(1a) 1(4c) 2(3a) 5(2c) 4(1c) 3(4a) 6(3c) 7(2a)
 - LookUp Table for actuated motors in different locomotion modes:
 
 	| Locomotion Mode | Motor IDs | Sim Motor IDs | Notes | Range|
@@ -93,4 +93,7 @@
 - Added anistropic friction using `contact` in MuJoCo
 - Writing a wrapper around the MuJoCo API to streamline the simulation and have beter control over each locomotion mode of the robot
 		
-		
+### Mujoco (Week 9 10/2 - 10/9)
+- More progress on the wrapper, now we have driving, crawling, extension, contraction, bending and twisting functions
+- Improvements are needed in making the motions more realistic to the real robots
+- Added state machine, with different states - need to encode valid transitions
