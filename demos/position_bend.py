@@ -14,7 +14,8 @@ def main():
     try:
         sim.start_simulation()
         sim.position_control_bend_right(position=2.9, duration=5)
-        sim.position_control_contraction(duration=15)
+        sim.position_control_contraction(duration=5)
+        sim.position_control_crawl(position=1.57)
     except KeyboardInterrupt:
         print("Simulation interrupted by user.")
         sim.close_simulation()

@@ -1,6 +1,6 @@
 <mujoco model="closerModel">
     <compiler angle="radian" />
-    <option timestep="0.001" actuatorgroupdisable="0 1 2" />
+    <option timestep="0.0001" actuatorgroupdisable="0 1 2" />
     
     <asset>
         <texture name="grid" type="2d" builtin="checker" width="300" height="300"
@@ -36,7 +36,7 @@
             <body name="disc1b" pos="0.175 0.10 0.10">
                 <inertial pos="0.025 0 0" mass="0.1" diaginertia="0.0001 0.000225 0.000225"/>
                 <geom name="disc1b_con" type="cylinder" fromto="0 0 0 0.02 0 0" size="0.17"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
-                <joint name="spring1b_hinge" type="hinge" axis="1 0 0"/>
+                <joint name="disc1b_hinge" type="hinge" axis="1 0 0" />
                 <site name="siteM1b1" pos="0 -0.165 -0.015"/>
                 <site name="siteM1b2" pos="0 0.165 0.015"/>
 
@@ -154,7 +154,7 @@
             <body name="disc4b" pos="-0.175 0.10 -0.10">
                 <inertial pos="-0.025 0 0" mass="0.1" diaginertia="0.0001 0.000225 0.000225"/>
                 <geom name="disc4b_con" type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.17"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
-                <joint name="disc4b_hinge" type="hinge" axis="1 0 0"/>
+                <joint name="disc4b_hinge" type="hinge" axis="1 0 0" />
                 <site name="siteM4b1" pos="0 -0.165 -0.015"/>
                 <site name="siteM4b2" pos="0 0.165 0.015"/>
 
@@ -165,6 +165,10 @@
         </body>
     </worldbody>
 
+    <equality>
+        <joint name="lock_disc1b" joint1="disc1b_hinge" />
+        <joint name="lock_disc4b" joint1="disc4b_hinge" />
+    </equality>
 
     <contact>
         <!-- For friction, making the first 2 values different results in anisotropic tangential friction, last 2 results in anisotropic rolling friction -->

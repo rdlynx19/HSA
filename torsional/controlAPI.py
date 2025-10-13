@@ -277,7 +277,9 @@ class MuJoCoControlInterface:
                 time.sleep(self.model.opt.timestep)
 
             self.set_robot_state(RobotState.IDLE)
-                      
+
+            self.data.eq_active = 0 # Disabling equality constraints
+
             self.step_simulation()
             self.sync_viewer()
             time.sleep(self.model.opt.timestep)
