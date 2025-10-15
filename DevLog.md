@@ -103,11 +103,11 @@
 - Added function to dynamically manipulate the equality constraints during runtime so we can quickly switch from one mode to another
 - Look Up Table for knowing which constraints are active/inactive during a particular mode
 
-| Locomotion Mode | Constraints Active | Constraints Inactive | Notes |
-|-----------------|-------------------- |---------------------| ------|
-| Bend Right|1 and 4|  2 and 3| |
-| Bend Left |2 and 3| 1 and 4| |
-| Twist 1|1 and 3 | 2 and 4|
-|Twist 2| 2 and 4| 1 and 3| 
+	| Locomotion Mode | Constraints Active | Constraints Inactive | Notes |
+	|-----------------|-------------------- |---------------------| ------|
+	| Bend Right|1 and 4|  2 and 3| |
+	| Bend Left |2 and 3| 1 and 4| |
+	| Twist 1|1 and 3 | 2 and 4|
+	|Twist 2| 2 and 4| 1 and 3| 
 
-- Decorator to allow transitions from only valid states
+- Decorator to allow transitions only between valid states: Ex: No transition from Bending -> Extension. You can transition from Bending -> Idle -> Extension

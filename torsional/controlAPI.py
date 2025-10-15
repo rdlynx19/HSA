@@ -37,7 +37,8 @@ class MuJoCoControlInterface:
         self.data = mujoco.MjData(self.model)
         self.state = RobotState.IDLE
         self.viewer = None
-          
+        self.distances = []
+
     def start_simulation(self) -> None:
         """
         Initialize/reset the simulation
@@ -227,7 +228,8 @@ class MuJoCoControlInterface:
                                     "spring2a_motor", "spring2c_motor",
                                     "spring4a_motor", "spring4c_motor"],
                                     duration: float = 15.0,
-                                    position: float = 2.84) -> None:
+                                    position: float = 2.84,
+                                    plot: bool = False) -> None:
         """
         Apply position control to obtain an extension motion
         """
@@ -261,7 +263,10 @@ class MuJoCoControlInterface:
                 time.sleep(self.model.opt.timestep)
 
             self.state_transition(RobotState.EXTENDED)
-                      
+            if plot:
+               distance = self.euclidean_distance("block_a", "block_b")
+               self.distances.append((self.data.time, distance))
+
             self.step_simulation()
             self.sync_viewer()
             time.sleep(self.model.opt.timestep)
@@ -275,7 +280,8 @@ class MuJoCoControlInterface:
                                     "spring3a_motor", "spring3c_motor",
                                     "spring2a_motor", "spring2c_motor",
                                     "spring4a_motor", "spring4c_motor"],
-                                    duration: float = 0.5) -> None:
+                                    duration: float = 0.5,
+                                    plot: bool = False) -> None:
         """
         Apply position control to bring back the robot to its original state
         """
@@ -309,7 +315,9 @@ class MuJoCoControlInterface:
                 time.sleep(self.model.opt.timestep)
 
             self.state_transition(RobotState.IDLE)
-
+            if plot:
+               distance = self.euclidean_distance("block_a", "block_b")
+               self.distances.append((self.data.time, distance))
 
             self.step_simulation()
             self.sync_viewer()
@@ -330,7 +338,9 @@ class MuJoCoControlInterface:
                                 "spring2a_motor", "spring2c_motor",
                                 "spring4a_motor", "spring4c_motor"],
                                 duration: float = 0.5,
-                                position: float = 2.84) -> None:
+                                position: float = 2.84,
+                                lock: bool = False, 
+                                plot: bool = False) -> None:
         """
         Perform crawling action by repeated contraction and extension
         """
@@ -351,16 +361,16 @@ class MuJoCoControlInterface:
         if self.viewer is None:
             self.start_simulation()
         try:
-            self.modify_equality_constraints(disable=True, 
-                                        constraints=["disc1b", "disc2b", "disc3b", "disc4b"])
+            if not lock:
+                self.modify_equality_constraints(disable=True, 
+                                            constraints=["disc1b", "disc2b", "disc3b", "disc4b"])
 
             self.step_simulation()
             self.sync_viewer()
 
             while self.viewer.is_running():
-                self.position_control_extension(duration=0.5, position=1.57)   
-                self.position_control_contraction(duration=0.5)
-           
+                self.position_control_extension(duration=0.5, position=1.57, plot=plot)   
+                self.position_control_contraction(duration=0.5, plot=plot)
 
         except Exception as e:
             print(f"Unknown error: {e}")
@@ -610,7 +620,27 @@ class MuJoCoControlInterface:
         interpolated = np.outer(1 - alphas, start) + np.outer(alphas, goal)
 
         return interpolated
-   
+
+    def euclidean_distance(self, body1: str, body2: str) -> float:
+        """
+        Compute the Euclidean distance between two bodies in the simulation.
+
+        :param body1: Name of the first body
+        :param body2: Name of the second body
+        :return: Euclidean distance between the two bodies
+        """
+        body1_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, body1)
+        body2_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, body2)
+
+        if body1_id < 0 or body2_id < 0:
+            raise ValueError(f"One or both bodies '{body1}', '{body2}' not found in the model.")
+
+        pos1 = self.data.xpos[body1_id]
+        pos2 = self.data.xpos[body2_id]
+
+        distance = np.linalg.norm(pos1 - pos2)
+        return distance
+    
     def view_model(self) -> None:
         """
         View the MuJoCo model in a passive viewer
