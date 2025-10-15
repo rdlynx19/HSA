@@ -4,6 +4,24 @@ import numpy as np
 from .states import RobotState
 import time
 
+def require_state(*valid_states):
+    """
+    Decorator to ensure a method is only called on certain robot states
+    :param valid_states: List of RobotState values in which the method is valid
+    """
+    def decorator(func):
+        def wrapper(self, *args, **kwargs):
+            """
+            Wrapped version of the method which runs instead of the original. It decides whether we make a call to the original method or not. 
+            """
+            if self.state not in valid_states:
+                print(f"Skipping {func.__name__}(): invalid robot state {self.state}")
+                return None
+            return func(self, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
 class MuJoCoControlInterface:
     """
     Control interface for HSA MuJoco simulations
@@ -19,6 +37,7 @@ class MuJoCoControlInterface:
         self.data = mujoco.MjData(self.model)
         self.state = RobotState.IDLE
         self.viewer = None
+        self.distances = []
 
     def start_simulation(self) -> None:
         """
@@ -117,12 +136,13 @@ class MuJoCoControlInterface:
         :return: Current RobotState
         """
         return self.state
-    
-    def set_robot_state(self, new_state: RobotState) -> None:
+
+    def state_transition(self, new_state: RobotState) -> None:
         """
-        Set the current state of the robot
-        :param new_state: New RobotState to set
+        Transition the robot to a new state
+        :param new_state: Desired new RobotState
         """
+        print(f"Transitioning from {self.state} to {new_state}")
         self.state = new_state
 
     def modify_equality_constraints(self, disable: bool = True, 
@@ -144,7 +164,7 @@ class MuJoCoControlInterface:
 
         print(f"Equality constraints updated: {self.data.eq_active}")
        
-
+    @require_state(RobotState.IDLE, RobotState.EXTENDED)
     def velocity_control_drive(self, 
                                actuator_names: list[str] = 
                                ["spring1a_vel", "spring1c_vel",
@@ -190,7 +210,7 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.model.opt.timestep)
 
-            self.set_robot_state(RobotState.DRIVING)
+            self.state_transition(RobotState.DRIVING)
 
             self.step_simulation()
             self.sync_viewer()
@@ -200,6 +220,7 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unexpected error: {e}")
 
+    @require_state(RobotState.IDLE)
     def position_control_extension(self,
                                    actuator_names: list[str] = 
                                    ["spring1a_motor", "spring1c_motor",
@@ -207,14 +228,11 @@ class MuJoCoControlInterface:
                                     "spring2a_motor", "spring2c_motor",
                                     "spring4a_motor", "spring4c_motor"],
                                     duration: float = 15.0,
-                                    position: float = 2.84) -> None:
+                                    position: float = 2.84,
+                                    plot: bool = False) -> None:
         """
         Apply position control to obtain an extension motion
         """
-        if self.get_robot_state() == RobotState.EXTENDED:
-            print("[WARN] Robot is already in extended state. Ignoring duplicate request!")
-            return
-
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
@@ -244,28 +262,29 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.model.opt.timestep)
 
-            self.set_robot_state(RobotState.EXTENDED)
-                      
+            self.state_transition(RobotState.EXTENDED)
+            if plot:
+               distance = self.euclidean_distance("block_a", "block_b")
+               self.distances.append((self.data.time, distance))
+
             self.step_simulation()
             self.sync_viewer()
             time.sleep(self.model.opt.timestep)
         except Exception as e:
             print(f"Unknown exception: {e}")
    
+    @require_state(RobotState.BENDING, RobotState.TWISTING, RobotState.EXTENDED)
     def position_control_contraction(self, 
                                     actuator_names: list[str] = 
                                    ["spring1a_motor", "spring1c_motor",
                                     "spring3a_motor", "spring3c_motor",
                                     "spring2a_motor", "spring2c_motor",
                                     "spring4a_motor", "spring4c_motor"],
-                                    duration: float = 0.5) -> None:
+                                    duration: float = 0.5,
+                                    plot: bool = False) -> None:
         """
         Apply position control to bring back the robot to its original state
         """
-        if self.get_robot_state() == RobotState.IDLE:
-            print("[WARN] Robot is already in idle state. Ignoring duplicate request!")
-            return
-
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
@@ -295,8 +314,10 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.model.opt.timestep)
 
-            self.set_robot_state(RobotState.IDLE)
-
+            self.state_transition(RobotState.IDLE)
+            if plot:
+               distance = self.euclidean_distance("block_a", "block_b")
+               self.distances.append((self.data.time, distance))
 
             self.step_simulation()
             self.sync_viewer()
@@ -309,6 +330,7 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unknown exception: {e}")
 
+    @require_state(RobotState.IDLE)
     def position_control_crawl(self,
                                actuator_names: list[str] = 
                                 ["spring1a_motor", "spring1c_motor",
@@ -316,14 +338,12 @@ class MuJoCoControlInterface:
                                 "spring2a_motor", "spring2c_motor",
                                 "spring4a_motor", "spring4c_motor"],
                                 duration: float = 0.5,
-                                position: float = 2.84) -> None:
+                                position: float = 2.84,
+                                lock: bool = False, 
+                                plot: bool = False) -> None:
         """
         Perform crawling action by repeated contraction and extension
         """
-        if self.get_robot_state() == RobotState.EXTENDED:
-            print("[WARN] Robot is already in extended state. Ignoring duplicate request!")
-            return
-        
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
@@ -341,20 +361,21 @@ class MuJoCoControlInterface:
         if self.viewer is None:
             self.start_simulation()
         try:
-            self.modify_equality_constraints(disable=True, 
-                                        constraints=["disc1b", "disc2b", "disc3b", "disc4b"])
+            if not lock:
+                self.modify_equality_constraints(disable=True, 
+                                            constraints=["disc1b", "disc2b", "disc3b", "disc4b"])
 
             self.step_simulation()
             self.sync_viewer()
 
             while self.viewer.is_running():
-                self.position_control_extension(duration=0.5, position=1.57)   
-                self.position_control_contraction(duration=0.5)
-           
+                self.position_control_extension(duration=0.5, position=1.57, plot=plot)   
+                self.position_control_contraction(duration=0.5, plot=plot)
 
         except Exception as e:
             print(f"Unknown error: {e}")
 
+    @require_state(RobotState.IDLE)    
     def position_control_twist1(self, 
                                 actuator_names: list[str] = 
                                 ["spring2c_motor", "spring4c_motor"],
@@ -363,10 +384,6 @@ class MuJoCoControlInterface:
         """
         Perform twisting motion in one direction
         """
-        if self.get_robot_state() == RobotState.EXTENDED:
-            print("[WARN] Robot is already in extended state. Ignoring duplicate request!")
-            return
-        
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
@@ -403,6 +420,7 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.model.opt.timestep)
               
+            self.state_transition(RobotState.TWISTING)
                 
             while self.viewer.is_running():
                 self.step_simulation()
@@ -412,6 +430,7 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unknown error: {e}")
 
+    @require_state(RobotState.IDLE) 
     def position_control_twist2(self, 
                                 actuator_names: list[str] = 
                                 ["spring1a_motor", "spring3a_motor"],
@@ -420,10 +439,6 @@ class MuJoCoControlInterface:
         """
         Perform twisting motion in one direction
         """
-        if self.get_robot_state() == RobotState.EXTENDED:
-            print("[WARN] Robot is already in extended state. Ignoring duplicate request!")
-            return
-        
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
@@ -469,6 +484,7 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unknown error: {e}")
 
+    @require_state(RobotState.IDLE)
     def position_control_bend_left(self, 
                               actuator_names: list[str] = 
                               ["spring1a_motor", "spring4c_motor"],
@@ -477,14 +493,8 @@ class MuJoCoControlInterface:
         """
         Perform bending motion in one direction
         """
-        if self.get_robot_state() == RobotState.BENDING:
-            print("[WARN] Robot is already in bending state. Ignoring duplicate request!")
-            return
-        
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
-
-        
 
         actuator_ids = []
         actuator_to_joint_ids = {}
@@ -518,11 +528,12 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.model.opt.timestep)
               
-            self.set_robot_state(RobotState.BENDING)  
+            self.state_transition(RobotState.BENDING)  
 
         except Exception as e:
             print(f"Unknown error: {e}")
 
+    @require_state(RobotState.IDLE)
     def position_control_bend_right(self, 
                               actuator_names: list[str] = 
                               ["spring3a_motor", "spring2c_motor"],
@@ -531,10 +542,6 @@ class MuJoCoControlInterface:
         """
         Perform bending motion in one direction
         """
-        if self.get_robot_state() == RobotState.EXTENDED:
-            print("[WARN] Robot is already in extended state. Ignoring duplicate request!")
-            return
-        
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
@@ -571,7 +578,7 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.model.opt.timestep)
               
-            self.set_robot_state(RobotState.BENDING)  
+            self.state_transition(RobotState.BENDING)  
 
         except Exception as e:
             print(f"Unknown error: {e}")
@@ -613,7 +620,27 @@ class MuJoCoControlInterface:
         interpolated = np.outer(1 - alphas, start) + np.outer(alphas, goal)
 
         return interpolated
-   
+
+    def euclidean_distance(self, body1: str, body2: str) -> float:
+        """
+        Compute the Euclidean distance between two bodies in the simulation.
+
+        :param body1: Name of the first body
+        :param body2: Name of the second body
+        :return: Euclidean distance between the two bodies
+        """
+        body1_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, body1)
+        body2_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, body2)
+
+        if body1_id < 0 or body2_id < 0:
+            raise ValueError(f"One or both bodies '{body1}', '{body2}' not found in the model.")
+
+        pos1 = self.data.xpos[body1_id]
+        pos2 = self.data.xpos[body2_id]
+
+        distance = np.linalg.norm(pos1 - pos2)
+        return distance
+    
     def view_model(self) -> None:
         """
         View the MuJoCo model in a passive viewer
