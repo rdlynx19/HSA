@@ -110,5 +110,5 @@
 | Twist 1|1 and 3 | 2 and 4|
 |Twist 2| 2 and 4| 1 and 3| 
 
-- Decorator to allow transitions from only valid states
+- Decorator to allow transitions only between valid states: Ex: No transition from Bending -> Extension. You can transition from Bending -> Idle -> Extension
 - Comparing extension when the discs are locked with extension when the discs are unlocked does not show a lot of difference. This begs the question if the DOF at the disc is redundant.
