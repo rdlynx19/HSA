@@ -4,7 +4,7 @@ def main():
     """
     Example usage to simply load and launch a MuJoCo model.
     """
-    model_path = "torsional/models/closer_model.xml"
+    model_path = "torsional/models/vertical_orientation.xml"
     sim = MuJoCoControlInterface(model_path=model_path)
     
     # Enable actuator group 2 and disable group 1

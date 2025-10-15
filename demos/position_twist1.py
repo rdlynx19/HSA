@@ -4,7 +4,7 @@ def main():
     """
     Example usage of twist using position control
     """
-    model_path = "torsional/models/closer_model.xml"
+    model_path = "torsional/models/vertical_orientation.xml"
     sim = MuJoCoControlInterface(model_path=model_path)
 
     # Enable actautor group 1 and disable group 2
@@ -13,7 +13,7 @@ def main():
 
     try:
         sim.start_simulation()
-        sim.position_control_twist1(position=3.14, duration=5.00)
+        sim.position_control_twist1(position=2.8, duration=0.5)
     except KeyboardInterrupt:
         print("Simulation interrupted by user.")
         sim.close_simulation()
