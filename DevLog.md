@@ -97,3 +97,16 @@
 - More progress on the wrapper, now we have driving, crawling, extension, contraction, bending and twisting functions
 - Improvements are needed in making the motions more realistic to the real robots
 - Added state machine, with different states - need to encode valid transitions
+
+### Mujoco (Week 10 10/9 - 10/16)
+- Found a good trick to add more stability to the structure - we can lock the intermediate discs when they are not being actuated using equality constraints
+- Added function to dynamically manipulate the equality constraints during runtime so we can quickly switch from one mode to another
+- Look Up Table for knowing which constraints are active/inactive during a particular mode
+
+| Locomotion Mode | Constraints Active | Constraints Inactive | Notes |
+|-----------------|-------------------- |---------------------| ------|
+| Bend Right|1 and 4|  2 and 3| |
+| Bend Left |2 and 3| 1 and 4| |
+| Twist 1|1 and 3 | 2 and 4|
+|Twist 2| 2 and 4| 1 and 3| 
+

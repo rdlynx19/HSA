@@ -167,6 +167,8 @@
 
     <equality>
         <joint name="lock_disc1b" joint1="disc1b_hinge" />
+        <joint name="lock_disc2b" joint1="disc2b_hinge" />
+        <joint name="lock_disc3b" joint1="disc3b_hinge" />
         <joint name="lock_disc4b" joint1="disc4b_hinge" />
     </equality>
 

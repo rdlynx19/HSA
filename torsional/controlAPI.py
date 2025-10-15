@@ -111,7 +111,6 @@ class MuJoCoControlInterface:
             joint_velocities[name] = velocity
         return joint_velocities
 
-    
     def get_robot_state(self) -> RobotState:
         """
         Get the current state of the robot
@@ -125,6 +124,26 @@ class MuJoCoControlInterface:
         :param new_state: New RobotState to set
         """
         self.state = new_state
+
+    def modify_equality_constraints(self, disable: bool = True, 
+                                    constraints: list = 
+                                    ["disc1b", "disc2b", 
+                                     "disc3b", "disc4b"], 
+                                     all_constraints: list = 
+                                     ["disc1b", "disc2b", 
+                                      "disc3b", "disc4b"]) -> None:
+        """
+        Enable or disable equality constraints in the simulation
+        :param disable: True to disable (set to 0), False to enable (set to 1)
+        :param constraints: List of constraint names to modify
+        :param all_constraints: List of all possible constraint names
+        """
+        for i, name in enumerate(all_constraints):
+            if name in constraints:
+                self.data.eq_active[i] = 0 if disable else 1
+
+        print(f"Equality constraints updated: {self.data.eq_active}")
+       
 
     def velocity_control_drive(self, 
                                actuator_names: list[str] = 
@@ -278,7 +297,6 @@ class MuJoCoControlInterface:
 
             self.set_robot_state(RobotState.IDLE)
 
-            self.data.eq_active = 0 # Disabling equality constraints
 
             self.step_simulation()
             self.sync_viewer()
@@ -323,6 +341,9 @@ class MuJoCoControlInterface:
         if self.viewer is None:
             self.start_simulation()
         try:
+            self.modify_equality_constraints(disable=True, 
+                                        constraints=["disc1b", "disc2b", "disc3b", "disc4b"])
+
             self.step_simulation()
             self.sync_viewer()
 
@@ -349,6 +370,7 @@ class MuJoCoControlInterface:
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
+        
         actuator_ids = []
         actuator_to_joint_ids = {}
         for name in actuator_names:
@@ -363,11 +385,71 @@ class MuJoCoControlInterface:
         if self.viewer is None:
             self.start_simulation()
         try:
+            self.modify_equality_constraints(disable=True, 
+                                         constraints=["disc2b", "disc4b"])
+
             self.step_simulation()
             self.sync_viewer()
 
             start_ctrl = np.zeros(len(actuator_ids))
             target_ctrl = np.array([-position for i in range(len(actuator_ids))])
+
+            # Generate interpolated trajectory
+            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.model.opt.timestep, "linear")
+
+            for step_values in trajectory:
+                self.data.ctrl[actuator_ids] = step_values
+                self.step_simulation()
+                self.sync_viewer()
+                time.sleep(self.model.opt.timestep)
+              
+                
+            while self.viewer.is_running():
+                self.step_simulation()
+                self.sync_viewer()
+                time.sleep(self.model.opt.timestep)
+
+        except Exception as e:
+            print(f"Unknown error: {e}")
+
+    def position_control_twist2(self, 
+                                actuator_names: list[str] = 
+                                ["spring1a_motor", "spring3a_motor"],
+                                duration: float = 0.5,
+                                position: float = 2.84) -> None:
+        """
+        Perform twisting motion in one direction
+        """
+        if self.get_robot_state() == RobotState.EXTENDED:
+            print("[WARN] Robot is already in extended state. Ignoring duplicate request!")
+            return
+        
+        self.disable_actuator_group(2)
+        self.enable_actuator_group(1) # Enabling position control
+
+
+        actuator_ids = []
+        actuator_to_joint_ids = {}
+        for name in actuator_names:
+            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
+            if actuator_id < 0:
+                raise ValueError(f"Actuator '{name}' not found in the model.")
+            actuator_ids.append(actuator_id)
+            joint_id = self.model.actuator_trnid[actuator_id, 0]
+            print(f"Joint ID: {joint_id}")
+            actuator_to_joint_ids[actuator_id] = joint_id
+
+        if self.viewer is None:
+            self.start_simulation()
+        try:
+            self.modify_equality_constraints(disable=True, 
+                                         constraints=["disc1b", "disc3b"])
+
+            self.step_simulation()
+            self.sync_viewer()
+
+            start_ctrl = np.zeros(len(actuator_ids))
+            target_ctrl = np.array([position for i in range(len(actuator_ids))])
 
             # Generate interpolated trajectory
             trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.model.opt.timestep, "linear")
@@ -402,6 +484,8 @@ class MuJoCoControlInterface:
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
+        
+
         actuator_ids = []
         actuator_to_joint_ids = {}
         for name in actuator_names:
@@ -416,6 +500,9 @@ class MuJoCoControlInterface:
         if self.viewer is None:
             self.start_simulation()
         try:
+            self.modify_equality_constraints(disable=True, 
+                                         constraints=["disc1b", "disc4b"])
+
             self.step_simulation()
             self.sync_viewer()
 
@@ -451,6 +538,7 @@ class MuJoCoControlInterface:
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
+       
         actuator_ids = []
         actuator_to_joint_ids = {}
         for name in actuator_names:
@@ -465,6 +553,9 @@ class MuJoCoControlInterface:
         if self.viewer is None:
             self.start_simulation()
         try:
+            self.modify_equality_constraints(disable=True, 
+                                         constraints=["disc2b", "disc3b"])
+
             self.step_simulation()
             self.sync_viewer()
 
@@ -522,8 +613,7 @@ class MuJoCoControlInterface:
         interpolated = np.outer(1 - alphas, start) + np.outer(alphas, goal)
 
         return interpolated
-
-
+   
     def view_model(self) -> None:
         """
         View the MuJoCo model in a passive viewer
