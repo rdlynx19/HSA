@@ -19,6 +19,17 @@ class MuJoCoControlInterface:
         self.data = mujoco.MjData(self.model)
         self.state = RobotState.IDLE
         self.viewer = None
+        self.valid_transitions = {
+            RobotState.IDLE: {RobotState.IDLE, RobotState.EXTENDED, 
+                            RobotState.DRIVING,RobotState.BENDING, 
+                            RobotState.TWISTING}, 
+            RobotState.EXTENDED: {RobotState.IDLE, RobotState.DRIVING,
+                                RobotState.EXTENDED},
+            RobotState.DRIVING: {RobotState.IDLE, RobotState.DRIVING},
+            RobotState.TWISTING: {RobotState.IDLE, RobotState.TWISTING},
+            RobotState.BENDING: {RobotState.IDLE, RobotState.BENDING}
+        }
+          
 
     def start_simulation(self) -> None:
         """
@@ -124,6 +135,8 @@ class MuJoCoControlInterface:
         :param new_state: New RobotState to set
         """
         self.state = new_state
+
+
 
     def modify_equality_constraints(self, disable: bool = True, 
                                     constraints: list = 
@@ -403,6 +416,7 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.model.opt.timestep)
               
+            self.set_robot_state(RobotState.TWISTING)
                 
             while self.viewer.is_running():
                 self.step_simulation()
