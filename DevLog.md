@@ -110,3 +110,4 @@
 | Twist 1|1 and 3 | 2 and 4|
 |Twist 2| 2 and 4| 1 and 3| 
 
+- Decorator to allow transitions from only valid states

@@ -260,7 +260,7 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.model.opt.timestep)
 
-            self.set_robot_state(RobotState.EXTENDED)
+            self.state_transition(RobotState.EXTENDED)
                       
             self.step_simulation()
             self.sync_viewer()
@@ -308,7 +308,7 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.model.opt.timestep)
 
-            self.set_robot_state(RobotState.IDLE)
+            self.state_transition(RobotState.IDLE)
 
 
             self.step_simulation()
@@ -410,7 +410,7 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.model.opt.timestep)
               
-            self.set_robot_state(RobotState.TWISTING)
+            self.state_transition(RobotState.TWISTING)
                 
             while self.viewer.is_running():
                 self.step_simulation()
@@ -518,7 +518,7 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.model.opt.timestep)
               
-            self.set_robot_state(RobotState.BENDING)  
+            self.state_transition(RobotState.BENDING)  
 
         except Exception as e:
             print(f"Unknown error: {e}")
@@ -568,7 +568,7 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.model.opt.timestep)
               
-            self.set_robot_state(RobotState.BENDING)  
+            self.state_transition(RobotState.BENDING)  
 
         except Exception as e:
             print(f"Unknown error: {e}")
