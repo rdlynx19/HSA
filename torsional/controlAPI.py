@@ -30,7 +30,6 @@ class MuJoCoControlInterface:
             RobotState.BENDING: {RobotState.IDLE, RobotState.BENDING}
         }
           
-
     def start_simulation(self) -> None:
         """
         Initialize/reset the simulation
@@ -136,7 +135,19 @@ class MuJoCoControlInterface:
         """
         self.state = new_state
 
+    def state_transition(self, new_state: RobotState) -> bool:
+        """
+        Attempt to transition to a new robot state if valid
+        :param new_state: Desired new RobotState
 
+        :return: True if transition successful, False otherwise
+        """
+        if new_state in self.valid_transitions[self.state]:
+            self.state = new_state
+            return True
+        else:
+            print(f"Invalid state transition from {self.state} to {new_state}")
+            return False
 
     def modify_equality_constraints(self, disable: bool = True, 
                                     constraints: list = 
