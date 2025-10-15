@@ -4,6 +4,24 @@ import numpy as np
 from .states import RobotState
 import time
 
+def require_state(*valid_states):
+    """
+    Decorator to ensure a method is only called on certain robot states
+    :param valid_states: List of RobotState values in which the method is valid
+    """
+    def decorator(func):
+        def wrapper(self, *args, **kwargs):
+            """
+            Wrapped version of the method which runs instead of the original. It decides whether we make a call to the original method or not. 
+            """
+            if self.state not in valid_states:
+                print(f"Skipping {func.__name__}(): invalid robot state {self.state}")
+                return None
+            return func(self, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
 class MuJoCoControlInterface:
     """
     Control interface for HSA MuJoco simulations
@@ -19,16 +37,6 @@ class MuJoCoControlInterface:
         self.data = mujoco.MjData(self.model)
         self.state = RobotState.IDLE
         self.viewer = None
-        self.valid_transitions = {
-            RobotState.IDLE: {RobotState.IDLE, RobotState.EXTENDED, 
-                            RobotState.DRIVING,RobotState.BENDING, 
-                            RobotState.TWISTING}, 
-            RobotState.EXTENDED: {RobotState.IDLE, RobotState.DRIVING,
-                                RobotState.EXTENDED},
-            RobotState.DRIVING: {RobotState.IDLE, RobotState.DRIVING},
-            RobotState.TWISTING: {RobotState.IDLE, RobotState.TWISTING},
-            RobotState.BENDING: {RobotState.IDLE, RobotState.BENDING}
-        }
           
     def start_simulation(self) -> None:
         """
@@ -127,27 +135,14 @@ class MuJoCoControlInterface:
         :return: Current RobotState
         """
         return self.state
-    
-    def set_robot_state(self, new_state: RobotState) -> None:
-        """
-        Set the current state of the robot
-        :param new_state: New RobotState to set
-        """
-        self.state = new_state
 
-    def state_transition(self, new_state: RobotState) -> bool:
+    def state_transition(self, new_state: RobotState) -> None:
         """
-        Attempt to transition to a new robot state if valid
+        Transition the robot to a new state
         :param new_state: Desired new RobotState
-
-        :return: True if transition successful, False otherwise
         """
-        if new_state in self.valid_transitions[self.state]:
-            self.state = new_state
-            return True
-        else:
-            print(f"Invalid state transition from {self.state} to {new_state}")
-            return False
+        print(f"Transitioning from {self.state} to {new_state}")
+        self.state = new_state
 
     def modify_equality_constraints(self, disable: bool = True, 
                                     constraints: list = 
@@ -168,7 +163,7 @@ class MuJoCoControlInterface:
 
         print(f"Equality constraints updated: {self.data.eq_active}")
        
-
+    @require_state(RobotState.IDLE, RobotState.EXTENDED)
     def velocity_control_drive(self, 
                                actuator_names: list[str] = 
                                ["spring1a_vel", "spring1c_vel",
@@ -214,7 +209,7 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.model.opt.timestep)
 
-            self.set_robot_state(RobotState.DRIVING)
+            self.state_transition(RobotState.DRIVING)
 
             self.step_simulation()
             self.sync_viewer()
@@ -224,6 +219,7 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unexpected error: {e}")
 
+    @require_state(RobotState.IDLE)
     def position_control_extension(self,
                                    actuator_names: list[str] = 
                                    ["spring1a_motor", "spring1c_motor",
@@ -235,10 +231,6 @@ class MuJoCoControlInterface:
         """
         Apply position control to obtain an extension motion
         """
-        if self.get_robot_state() == RobotState.EXTENDED:
-            print("[WARN] Robot is already in extended state. Ignoring duplicate request!")
-            return
-
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
@@ -276,6 +268,7 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unknown exception: {e}")
    
+    @require_state(RobotState.BENDING, RobotState.TWISTING, RobotState.EXTENDED)
     def position_control_contraction(self, 
                                     actuator_names: list[str] = 
                                    ["spring1a_motor", "spring1c_motor",
@@ -286,10 +279,6 @@ class MuJoCoControlInterface:
         """
         Apply position control to bring back the robot to its original state
         """
-        if self.get_robot_state() == RobotState.IDLE:
-            print("[WARN] Robot is already in idle state. Ignoring duplicate request!")
-            return
-
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
@@ -333,6 +322,7 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unknown exception: {e}")
 
+    @require_state(RobotState.IDLE)
     def position_control_crawl(self,
                                actuator_names: list[str] = 
                                 ["spring1a_motor", "spring1c_motor",
@@ -344,10 +334,6 @@ class MuJoCoControlInterface:
         """
         Perform crawling action by repeated contraction and extension
         """
-        if self.get_robot_state() == RobotState.EXTENDED:
-            print("[WARN] Robot is already in extended state. Ignoring duplicate request!")
-            return
-        
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
@@ -379,6 +365,7 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unknown error: {e}")
 
+    @require_state(RobotState.IDLE)    
     def position_control_twist1(self, 
                                 actuator_names: list[str] = 
                                 ["spring2c_motor", "spring4c_motor"],
@@ -387,10 +374,6 @@ class MuJoCoControlInterface:
         """
         Perform twisting motion in one direction
         """
-        if self.get_robot_state() == RobotState.EXTENDED:
-            print("[WARN] Robot is already in extended state. Ignoring duplicate request!")
-            return
-        
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
@@ -437,6 +420,7 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unknown error: {e}")
 
+    @require_state(RobotState.IDLE) 
     def position_control_twist2(self, 
                                 actuator_names: list[str] = 
                                 ["spring1a_motor", "spring3a_motor"],
@@ -445,10 +429,6 @@ class MuJoCoControlInterface:
         """
         Perform twisting motion in one direction
         """
-        if self.get_robot_state() == RobotState.EXTENDED:
-            print("[WARN] Robot is already in extended state. Ignoring duplicate request!")
-            return
-        
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
@@ -494,6 +474,7 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unknown error: {e}")
 
+    @require_state(RobotState.IDLE)
     def position_control_bend_left(self, 
                               actuator_names: list[str] = 
                               ["spring1a_motor", "spring4c_motor"],
@@ -502,14 +483,8 @@ class MuJoCoControlInterface:
         """
         Perform bending motion in one direction
         """
-        if self.get_robot_state() == RobotState.BENDING:
-            print("[WARN] Robot is already in bending state. Ignoring duplicate request!")
-            return
-        
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
-
-        
 
         actuator_ids = []
         actuator_to_joint_ids = {}
@@ -548,6 +523,7 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unknown error: {e}")
 
+    @require_state(RobotState.IDLE)
     def position_control_bend_right(self, 
                               actuator_names: list[str] = 
                               ["spring3a_motor", "spring2c_motor"],
@@ -556,10 +532,6 @@ class MuJoCoControlInterface:
         """
         Perform bending motion in one direction
         """
-        if self.get_robot_state() == RobotState.EXTENDED:
-            print("[WARN] Robot is already in extended state. Ignoring duplicate request!")
-            return
-        
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
