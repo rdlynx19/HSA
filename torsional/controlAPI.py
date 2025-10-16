@@ -208,54 +208,60 @@ class MuJoCoControlInterface:
                                  "cw_cont_3a_btm", "cw_ext_3c_btm",
                                  "cw_cont_2a_top", "cw_ext_2c_top",
                                  "cw_cont_4a_btm", "cw_ext_4c_btm"],
-                               duration: float = 15.0,
-                               velocity: float = 3.0) -> None:
+                               duration: float = 5.0,
+                               velocity: float = 3.0, 
+                               max_velocity: float = 6.28) -> None:
         """
         Apply velocity control to specified actuators for a given duration
         """
-        error_prev = np.zeros(len(actuator_names))
-        error_int = np.zeros(len(actuator_names))
-        ctrl_signals = np.zeros(len(actuator_names))
-
         self.disable_actuator_group(1)
         self.enable_actuator_group(2)
 
-        actuator_ids = self.get_actuator_ids(actuator_names)
-        
+        pid_state = [{"error_prev": 0.0, "error_int": 0.0} for _ in actuator_names]     
+        # Actuator Name order: spring1a, spring1c, spring3a, spring3c, spring2a, spring2c, spring4a, spring4c
+        list_Kp = [0.5, 0.7, 0.5, 0.5, 0.5, 0.7, 0.5, 0.5]   
+        list_Kd = [0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001, 0.0001]
+        list_Ki = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+
         if self.viewer is None:
             self.start_simulation()
         try:
             self.step_simulation()
             self.sync_viewer()
             
-            start_ctrl = np.zeros(len(actuator_ids))
-            target_ctrl = np.array([velocity if i % 2 == 0 else velocity for i in range(len(actuator_ids))])
+            start_ctrl = np.zeros(len(actuator_names))
+            target_ctrl = np.array([velocity if i % 2 == 0 else velocity for i in range(len(actuator_names))])
             trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.dt, "smoothstep")
 
             for step_values in trajectory:
-                current_velocities = self.get_joint_velocities(joint_names=joint_names)
-                # for each interpolated desired velocity value (per actuator)
-                for i, id in enumerate(actuator_ids):
-                    desired_velocity = step_values[i]
-                    actual_velocity = current_velocities[joint_names[i]]
-                    error = desired_velocity - actual_velocity
-
-                    # Calling PID control function
-                    ctrl_signals[i], error_prev[i], error_int[i] = self.compute_pid(error, error_prev[i], error_int[i], self.dt)
-
-                self.data.ctrl[actuator_ids] = ctrl_signals
-                self.step_simulation()
-                self.sync_viewer()
-                time.sleep(self.dt)
-            
-            final_ctrl = trajectory[-1]
-            while self.viewer.is_running():
-                self.data.ctrl[actuator_ids] = final_ctrl
+                pid_state = self.apply_pid_ctrl(actuator_names=actuator_names,
+                                               joint_names=joint_names,
+                                               target_setpoints=step_values,
+                                               pid_state=pid_state,
+                                               dt=self.dt,
+                                               list_Kp=list_Kp, list_Kd=list_Kd, list_Ki=list_Ki,
+                                               position=False, max_velocity=max_velocity)
                 self.step_simulation()
                 self.sync_viewer()
                 time.sleep(self.dt)
 
             self.state_transition(RobotState.DRIVING)
+
+            final_ctrl = trajectory[-1]
+            while self.viewer.is_running():
+                pid_state = self.apply_pid_ctrl(actuator_names=actuator_names,
+                                               joint_names=joint_names,
+                                               target_setpoints=final_ctrl,
+                                               pid_state=pid_state,
+                                               dt=self.dt,
+                                               list_Kp=list_Kp, list_Kd=list_Kd, list_Ki=list_Ki,
+                                               position=False,
+                                               max_velocity=max_velocity)
+                self.step_simulation()
+                self.sync_viewer()
+                time.sleep(self.dt)
+
 
             self.step_simulation()
             self.sync_viewer()
@@ -637,22 +643,83 @@ class MuJoCoControlInterface:
         distance = np.linalg.norm(pos1 - pos2)
         return distance
 
-    def compute_pid(self, error: float = 0.0, 
-                    error_prev:float = 0.0, 
+    def _compute_pid(self, error: float = 0.0, 
+                    error_prev: float = 0.0, 
                     error_int: float = 0.0,
-                    dt: float = 0.01,
+                    dt: float = 0.001,
                     Kp: float = 1.0, Kd: float = 0.0,
-                    Ki: float = 0.0) -> None:
+                    Ki: float = 0.0) -> tuple[float, float, float]:
         """
-        Velocity PID controller for the drive mode
+        PID controller calculation
         :param Kp: Proportional gain
         :param Kd: Derivative gain
-        :param Ki: Integral gain (optional)
+        :param Ki: Integral gain
+
+        :return: Control signal, updated previous error, updated integral error
         """
         error_int += error * dt
         error_deriv = (error - error_prev) / dt 
         ctrl_signal = Kp * error + Kd * error_deriv + Ki * error_int
         return ctrl_signal, error, error_int
+
+    def apply_pid_ctrl(self, actuator_names: list[str] = None, 
+                       joint_names: list[str] = None,
+                       target_setpoints: list[float] = None,
+                       pid_state: list[dict[str, float]] = None,
+                       dt : float = 0.001,
+                       list_Kp: list[float] = [0.0], 
+                       list_Kd: list[float] = [0.0],
+                       list_Ki: list[float] = [0.0], 
+                       position: bool = False, 
+                       max_velocity: float = 6.28) -> None:
+        """
+        Apply PID control to the specified actuators to reach target setpoints
+        :param actuator_names: List of actuator names to control
+        :param joint_names: List of joint names corresponding to the actuators
+        :param target_setpoints: Desired target positions or velocities for the joints
+        :param pid_state: List of dictionaries maintaining PID state for each actuator
+        :param dt: Time step for control updates
+        :param Kp: List of proportional gains (one per actuator)
+        :param Kd: List of derivative gains (one per actuator)
+        :param Ki: List of integral gains (one per actuator)
+        :param position: True for position control, False for velocity control
+        """
+        if actuator_names is None or joint_names is None or target_setpoints is None or pid_state is None:
+            raise ValueError("Actuator names, joint names, target setpoints, and PID state must be provided.")
+        
+        actuator_ids = self.get_actuator_ids(actuator_names)
+        ctrl_signals = np.zeros(len(actuator_ids))
+
+        if not position:
+            current_values = self.get_joint_velocities(joint_names)
+        else:
+            current_values = self.get_joint_positions(joint_names)
+        
+        # Compute PID control for each actuator
+        for i, act_id in enumerate(actuator_ids):
+            desired_value = target_setpoints[i]
+            actual_value = current_values[joint_names[i]]
+            error = desired_value - actual_value
+
+            error_prev = pid_state[i].get("error_prev", 0.0)
+            error_int = pid_state[i].get("error_int", 0.0)
+
+            ctrl_signals[i], updated_error_prev, updated_error_int = self._compute_pid(
+                error, error_prev, error_int, dt, list_Kp[i], list_Kd[i], list_Ki[i]
+            )
+
+            # Clamp control signals to max velocity limits
+            if not position:
+                ctrl_signals[i] = np.clip(ctrl_signals[i], -max_velocity, max_velocity)
+
+            # Update PID state
+            pid_state[i]["error_prev"] = updated_error_prev
+            pid_state[i]["error_int"] = updated_error_int
+        
+        # Apply control signals to actuators
+        self.data.ctrl[actuator_ids] = ctrl_signals
+
+        return pid_state
 
     def view_model(self) -> None:
         """
