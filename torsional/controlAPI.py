@@ -38,6 +38,7 @@ class MuJoCoControlInterface:
         self.state = RobotState.IDLE
         self.viewer = None
         self.distances = []
+        self.dt = self.model.opt.timestep
 
     def start_simulation(self) -> None:
         """
@@ -130,6 +131,37 @@ class MuJoCoControlInterface:
             joint_velocities[name] = velocity
         return joint_velocities
 
+    def get_actuator_ids(self, actuator_names: list[str]) -> list[int]:
+        """
+        Get the IDs of specified actuators by their names
+        :param actuator_names: List of actuator names to retrieve IDs for
+
+        :return: list of actuator IDs
+        """
+        actuator_ids = []
+        for name in actuator_names:
+            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
+            if actuator_id < 0:
+                raise ValueError(f"Actuator '{name}' not found in the model.")
+            actuator_ids.append(actuator_id)
+        return actuator_ids
+
+    def get_actuator_to_joint_ids(self, actuator_names: list[str]) -> dict[int, int]:
+        """
+        Get a mapping of actuator IDs to their corresponding joint IDs
+        :param actuator_names: List of actuator names to retrieve mappings for
+
+        :return: Dictionary mapping actuator IDs to joint IDs
+        """
+        actuator_to_joint_ids = {}
+        for name in actuator_names:
+            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
+            if actuator_id < 0:
+                raise ValueError(f"Actuator '{name}' not found in the model.")
+            joint_id = self.model.actuator_trnid[actuator_id, 0]
+            actuator_to_joint_ids[actuator_id] = joint_id
+        return actuator_to_joint_ids
+
     def get_robot_state(self) -> RobotState:
         """
         Get the current state of the robot
@@ -171,20 +203,24 @@ class MuJoCoControlInterface:
                                 "spring3a_vel", "spring3c_vel",
                                 "spring2a_vel", "spring2c_vel",
                                 "spring4a_vel", "spring4c_vel"],
-                                duration: float = 15.0,
+                               joint_names: list[str] = 
+                                ["cw_cont_1a_top", "cw_ext_1c_top",
+                                 "cw_cont_3a_btm", "cw_ext_3c_btm",
+                                 "cw_cont_2a_top", "cw_ext_2c_top",
+                                 "cw_cont_4a_btm", "cw_ext_4c_btm"],
+                               duration: float = 15.0,
                                velocity: float = 3.0) -> None:
         """
         Apply velocity control to specified actuators for a given duration
         """
+        error_prev = np.zeros(len(actuator_names))
+        error_int = np.zeros(len(actuator_names))
+        ctrl_signals = np.zeros(len(actuator_names))
+
         self.disable_actuator_group(1)
         self.enable_actuator_group(2)
 
-        actuator_ids = []
-        for name in actuator_names:
-            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
-            if actuator_id < 0:
-                raise ValueError(f"Actuator '{name}' not found in the model.")
-            actuator_ids.append(actuator_id)
+        actuator_ids = self.get_actuator_ids(actuator_names)
         
         if self.viewer is None:
             self.start_simulation()
@@ -194,27 +230,36 @@ class MuJoCoControlInterface:
             
             start_ctrl = np.zeros(len(actuator_ids))
             target_ctrl = np.array([velocity if i % 2 == 0 else velocity for i in range(len(actuator_ids))])
-            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.model.opt.timestep, "smoothstep")
+            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.dt, "smoothstep")
 
             for step_values in trajectory:
-                self.data.ctrl[actuator_ids] = step_values
+                current_velocities = self.get_joint_velocities(joint_names=joint_names)
+                # for each interpolated desired velocity value (per actuator)
+                for i, id in enumerate(actuator_ids):
+                    desired_velocity = step_values[i]
+                    actual_velocity = current_velocities[joint_names[i]]
+                    error = desired_velocity - actual_velocity
+
+                    # Calling PID control function
+                    ctrl_signals[i], error_prev[i], error_int[i] = self.compute_pid(error, error_prev[i], error_int[i], self.dt)
+
+                self.data.ctrl[actuator_ids] = ctrl_signals
                 self.step_simulation()
                 self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
+                time.sleep(self.dt)
             
             final_ctrl = trajectory[-1]
-            
             while self.viewer.is_running():
                 self.data.ctrl[actuator_ids] = final_ctrl
                 self.step_simulation()
                 self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
+                time.sleep(self.dt)
 
             self.state_transition(RobotState.DRIVING)
 
             self.step_simulation()
             self.sync_viewer()
-            time.sleep(self.model.opt.timestep)
+            time.sleep(self.dt)
         
 
         except Exception as e:
@@ -236,12 +281,7 @@ class MuJoCoControlInterface:
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
-        actuator_ids = []
-        for name in actuator_names:
-            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
-            if actuator_id < 0:
-                raise ValueError(f"Actuator '{name}' not found in the model.")
-            actuator_ids.append(actuator_id)
+        actuator_ids = self.get_actuator_ids(actuator_names)
 
         if self.viewer is None:
             self.start_simulation()
@@ -254,13 +294,13 @@ class MuJoCoControlInterface:
             target_ctrl = np.array([position if i % 2 == 0 else -position for i in range(len(actuator_ids))])
 
             # Generate interpolated trajectory
-            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.model.opt.timestep, "linear")
+            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.dt, "linear")
 
             for step_values in trajectory:
                 self.data.ctrl[actuator_ids] = step_values
                 self.step_simulation()
                 self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
+                time.sleep(self.dt)
 
             self.state_transition(RobotState.EXTENDED)
             if plot:
@@ -269,7 +309,7 @@ class MuJoCoControlInterface:
 
             self.step_simulation()
             self.sync_viewer()
-            time.sleep(self.model.opt.timestep)
+            time.sleep(self.dt)
         except Exception as e:
             print(f"Unknown exception: {e}")
    
@@ -288,12 +328,7 @@ class MuJoCoControlInterface:
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
-        actuator_ids = []
-        for name in actuator_names:
-            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
-            if actuator_id < 0:
-                raise ValueError(f"Actuator '{name}' not found in the model.")
-            actuator_ids.append(actuator_id)
+        actuator_ids = self.get_actuator_ids(actuator_names)
 
         if self.viewer is None:
             self.start_simulation()
@@ -306,13 +341,13 @@ class MuJoCoControlInterface:
             target_ctrl = np.zeros(len(actuator_ids))
 
             # Generate interpolated trajectory
-            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.model.opt.timestep, "linear")
+            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.dt, "linear")
 
             for step_values in trajectory:
                 self.data.ctrl[actuator_ids] = step_values
                 self.step_simulation()
                 self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
+                time.sleep(self.dt)
 
             self.state_transition(RobotState.IDLE)
             if plot:
@@ -321,12 +356,12 @@ class MuJoCoControlInterface:
 
             self.step_simulation()
             self.sync_viewer()
-            time.sleep(self.model.opt.timestep)
+            time.sleep(self.dt)
 
             # while self.viewer.is_running():
             #     self.step_simulation()
             #     self.sync_viewer()
-            #     time.sleep(self.model.opt.timestep)
+            #     time.sleep(self.dt)
         except Exception as e:
             print(f"Unknown exception: {e}")
 
@@ -347,16 +382,8 @@ class MuJoCoControlInterface:
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
-        actuator_ids = []
-        actuator_to_joint_ids = {}
-        for name in actuator_names:
-            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
-            if actuator_id < 0:
-                raise ValueError(f"Actuator '{name}' not found in the model.")
-            actuator_ids.append(actuator_id)
-            joint_id = self.model.actuator_trnid[actuator_id, 0]
-            print(f"Joint ID: {joint_id}")
-            actuator_to_joint_ids[actuator_id] = joint_id
+        actuator_ids = self.get_actuator_ids(actuator_names)
+        actuator_to_joint_ids = self.get_actuator_to_joint_ids(actuator_names)
 
         if self.viewer is None:
             self.start_simulation()
@@ -388,16 +415,8 @@ class MuJoCoControlInterface:
         self.enable_actuator_group(1) # Enabling position control
 
         
-        actuator_ids = []
-        actuator_to_joint_ids = {}
-        for name in actuator_names:
-            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
-            if actuator_id < 0:
-                raise ValueError(f"Actuator '{name}' not found in the model.")
-            actuator_ids.append(actuator_id)
-            joint_id = self.model.actuator_trnid[actuator_id, 0]
-            print(f"Joint ID: {joint_id}")
-            actuator_to_joint_ids[actuator_id] = joint_id
+        actuator_ids = self.get_actuator_ids(actuator_names)
+        actuator_to_joint_ids = self.get_actuator_to_joint_ids(actuator_names)
 
         if self.viewer is None:
             self.start_simulation()
@@ -412,20 +431,20 @@ class MuJoCoControlInterface:
             target_ctrl = np.array([-position for i in range(len(actuator_ids))])
 
             # Generate interpolated trajectory
-            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.model.opt.timestep, "linear")
+            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.dt, "linear")
 
             for step_values in trajectory:
                 self.data.ctrl[actuator_ids] = step_values
                 self.step_simulation()
                 self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
+                time.sleep(self.dt)
               
             self.state_transition(RobotState.TWISTING)
                 
             while self.viewer.is_running():
                 self.step_simulation()
                 self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
+                time.sleep(self.dt)
 
         except Exception as e:
             print(f"Unknown error: {e}")
@@ -443,16 +462,9 @@ class MuJoCoControlInterface:
         self.enable_actuator_group(1) # Enabling position control
 
 
-        actuator_ids = []
-        actuator_to_joint_ids = {}
-        for name in actuator_names:
-            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
-            if actuator_id < 0:
-                raise ValueError(f"Actuator '{name}' not found in the model.")
-            actuator_ids.append(actuator_id)
-            joint_id = self.model.actuator_trnid[actuator_id, 0]
-            print(f"Joint ID: {joint_id}")
-            actuator_to_joint_ids[actuator_id] = joint_id
+        actuator_ids = self.get_actuator_ids(actuator_names)
+        actuator_to_joint_ids = self.get_actuator_to_joint_ids(actuator_names)
+
 
         if self.viewer is None:
             self.start_simulation()
@@ -467,19 +479,19 @@ class MuJoCoControlInterface:
             target_ctrl = np.array([position for i in range(len(actuator_ids))])
 
             # Generate interpolated trajectory
-            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.model.opt.timestep, "linear")
+            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.dt, "linear")
 
             for step_values in trajectory:
                 self.data.ctrl[actuator_ids] = step_values
                 self.step_simulation()
                 self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
+                time.sleep(self.dt)
               
                 
             while self.viewer.is_running():
                 self.step_simulation()
                 self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
+                time.sleep(self.dt)
 
         except Exception as e:
             print(f"Unknown error: {e}")
@@ -496,16 +508,8 @@ class MuJoCoControlInterface:
         self.disable_actuator_group(2)
         self.enable_actuator_group(1) # Enabling position control
 
-        actuator_ids = []
-        actuator_to_joint_ids = {}
-        for name in actuator_names:
-            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
-            if actuator_id < 0:
-                raise ValueError(f"Actuator '{name}' not found in the model.")
-            actuator_ids.append(actuator_id)
-            joint_id = self.model.actuator_trnid[actuator_id, 0]
-            print(f"Joint ID: {joint_id}")
-            actuator_to_joint_ids[actuator_id] = joint_id
+        actuator_ids = self.get_actuator_ids(actuator_names)
+        actuator_to_joint_ids = self.get_actuator_to_joint_ids(actuator_names)
 
         if self.viewer is None:
             self.start_simulation()
@@ -520,13 +524,13 @@ class MuJoCoControlInterface:
             target_ctrl = np.array([position if i%2 == 0 else -position for i in range(len(actuator_ids))])
 
             # Generate interpolated trajectory
-            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.model.opt.timestep, "linear")
+            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.dt, "linear")
 
             for step_values in trajectory:
                 self.data.ctrl[actuator_ids] = step_values
                 self.step_simulation()
                 self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
+                time.sleep(self.dt)
               
             self.state_transition(RobotState.BENDING)  
 
@@ -546,16 +550,8 @@ class MuJoCoControlInterface:
         self.enable_actuator_group(1) # Enabling position control
 
        
-        actuator_ids = []
-        actuator_to_joint_ids = {}
-        for name in actuator_names:
-            actuator_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
-            if actuator_id < 0:
-                raise ValueError(f"Actuator '{name}' not found in the model.")
-            actuator_ids.append(actuator_id)
-            joint_id = self.model.actuator_trnid[actuator_id, 0]
-            print(f"Joint ID: {joint_id}")
-            actuator_to_joint_ids[actuator_id] = joint_id
+        actuator_ids = self.get_actuator_ids(actuator_names)
+        actuator_to_joint_ids = self.get_actuator_to_joint_ids(actuator_names)
 
         if self.viewer is None:
             self.start_simulation()
@@ -570,13 +566,13 @@ class MuJoCoControlInterface:
             target_ctrl = np.array([position if i%2 == 0 else -position for i in range(len(actuator_ids))])
 
             # Generate interpolated trajectory
-            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.model.opt.timestep, "linear")
+            trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.dt, "linear")
 
             for step_values in trajectory:
                 self.data.ctrl[actuator_ids] = step_values
                 self.step_simulation()
                 self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
+                time.sleep(self.dt)
               
             self.state_transition(RobotState.BENDING)  
 
@@ -640,7 +636,24 @@ class MuJoCoControlInterface:
 
         distance = np.linalg.norm(pos1 - pos2)
         return distance
-    
+
+    def compute_pid(self, error: float = 0.0, 
+                    error_prev:float = 0.0, 
+                    error_int: float = 0.0,
+                    dt: float = 0.01,
+                    Kp: float = 1.0, Kd: float = 0.0,
+                    Ki: float = 0.0) -> None:
+        """
+        Velocity PID controller for the drive mode
+        :param Kp: Proportional gain
+        :param Kd: Derivative gain
+        :param Ki: Integral gain (optional)
+        """
+        error_int += error * dt
+        error_deriv = (error - error_prev) / dt 
+        ctrl_signal = Kp * error + Kd * error_deriv + Ki * error_int
+        return ctrl_signal, error, error_int
+
     def view_model(self) -> None:
         """
         View the MuJoCo model in a passive viewer
@@ -654,7 +667,7 @@ class MuJoCoControlInterface:
             while self.viewer.is_running():
                 self.step_simulation()
                 self.sync_viewer()
-                time.sleep(self.model.opt.timestep)
+                time.sleep(self.dt)
         except Exception as e:
             print(f"Unknown error: {e}")
 
