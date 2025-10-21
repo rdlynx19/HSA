@@ -5,7 +5,7 @@ def main():
     """
     Example usage of extension using position control
     """
-    model_path = "torsional/models/closer_model.xml"
+    model_path = "torsional/models/vertical_orientation.xml"
     sim = MuJoCoControlInterface(model_path=model_path)
 
     # Enable actautor group 1 and disable group 2
@@ -13,7 +13,7 @@ def main():
     sim.enable_actuator_group(1)
 
     try:
-        # sim.position_control_crawl(position=2.14, lock=True, plot=True)
+        # sim.position_control_crawl(position=2.8, lock=True, plot=True)
         sim.position_control_bend_left(position=2.8, duration=2.5, plot=True)
         sim.position_control_contraction(duration=2.5, plot=True)
         sim.position_control_bend_right(position=2.8, duration=2.5, plot=True)
@@ -22,7 +22,8 @@ def main():
         print("Simulation interrupted by user.")
     finally:
         times, dists = zip(*sim.distances)
-        plt.title("Bending Mode: Unlocked")
+        plt.title("Vertical Bending Mode: Locked")
+        plt.grid(True)
         plt.plot(times, dists)
         plt.xlabel("Time (s)")
         plt.ylabel("Distance between blocks (m)")
