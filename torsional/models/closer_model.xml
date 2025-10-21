@@ -1,6 +1,6 @@
 <mujoco model="closerModel">
     <compiler angle="radian" />
-    <option timestep="0.0001" actuatorgroupdisable="0 1 2" />
+    <option timestep="0.001" actuatorgroupdisable="0 1 2" />
     
     <asset>
         <texture name="grid" type="2d" builtin="checker" width="300" height="300"
@@ -192,18 +192,18 @@
         <motor name="spring4c_torque" group="0" joint="cw_ext_4c_btm" gear="0.05" ctrlrange="-5 5"/>
     </actuator>
     <actuator>
-        <position name="spring1a_motor" group="1" joint="cw_cont_1a_top" kp="1" ctrlrange="0 3.14"/>
-        <position name="spring2a_motor" group="1" joint="cw_cont_2a_top" kp="1" ctrlrange="0 3.14"/>
-        <position name="spring3a_motor" group="1" joint="cw_cont_3a_btm" kp="1" ctrlrange="0 3.14"/>
-        <position name="spring4a_motor" group="1" joint="cw_cont_4a_btm" kp="1" ctrlrange="0 3.14"/>
-        
-        <position name="spring1c_motor" group="1" joint="cw_ext_1c_top" kp="1" ctrlrange="-3.14 0"/>
-        <position name="spring2c_motor" group="1" joint="cw_ext_2c_top" kp="1" ctrlrange="-3.14 0"/>
-        <position name="spring3c_motor" group="1" joint="cw_ext_3c_btm" kp="1" ctrlrange="-3.14 0"/>
-        <position name="spring4c_motor" group="1" joint="cw_ext_4c_btm" kp="1" ctrlrange="-3.14 0"/>
+        <position name="spring1a_motor" group="1" joint="cw_cont_1a_top" kp="10"  ctrlrange="0 3.14" />
+        <position name="spring2a_motor" group="1" joint="cw_cont_2a_top" kp="10"  ctrlrange="0 3.14" />
+        <position name="spring3a_motor" group="1" joint="cw_cont_3a_btm" kp="10"  ctrlrange="0 3.14" />
+        <position name="spring4a_motor" group="1" joint="cw_cont_4a_btm" kp="10"  ctrlrange="0 3.14" />
+
+        <position name="spring1c_motor" group="1" joint="cw_ext_1c_top" kp="10"  ctrlrange="-3.14 0" />
+        <position name="spring2c_motor" group="1" joint="cw_ext_2c_top" kp="10"  ctrlrange="-3.14 0" />
+        <position name="spring3c_motor" group="1" joint="cw_ext_3c_btm" kp="10"  ctrlrange="-3.14 0" />
+        <position name="spring4c_motor" group="1" joint="cw_ext_4c_btm" kp="10"  ctrlrange="-3.14 0" />
     </actuator>
     <actuator>
-        <velocity name="spring1a_vel" group="2" joint="cw_cont_1a_top" kv="0.1" ctrlrange="-6.28 6.28"/>
+        <velocity name="spring1a_vel" group="2" joint="cw_cont_1a_top" kv="0.1" ctrlrange="-6.28 12.56"/>
         <velocity name="spring2a_vel" group="2" joint="cw_cont_2a_top" kv="0.1" ctrlrange="-6.28 6.28"/>
         <velocity name="spring3a_vel" group="2" joint="cw_cont_3a_btm" kv="0.1" ctrlrange="-6.28 6.28"/>
         <velocity name="spring4a_vel" group="2" joint="cw_cont_4a_btm" kv="0.1" ctrlrange="-6.28 6.28"/>
