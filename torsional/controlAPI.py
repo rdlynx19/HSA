@@ -429,6 +429,8 @@ class MuJoCoControlInterface:
         try:
             self.modify_equality_constraints(disable=True, 
                                          constraints=["disc2b", "disc4b"])
+            self.modify_equality_constraints(disable=False,
+                                             constraints=["disc1b", "disc3b"])
 
             self.step_simulation()
             self.sync_viewer()
@@ -477,6 +479,8 @@ class MuJoCoControlInterface:
         try:
             self.modify_equality_constraints(disable=True, 
                                          constraints=["disc1b", "disc3b"])
+            self.modify_equality_constraints(disable=False, 
+                                             constraints=["disc2b", "disc4b"])
 
             self.step_simulation()
             self.sync_viewer()
@@ -505,9 +509,13 @@ class MuJoCoControlInterface:
     @require_state(RobotState.IDLE)
     def position_control_bend_left(self, 
                               actuator_names: list[str] = 
-                              ["spring1a_motor", "spring4c_motor"],
+                              ["spring1a_motor", "spring4c_motor",
+                                "spring2c_motor", "spring3a_motor",
+                                "spring2a_motor", "spring1c_motor",
+                                "spring4a_motor", "spring3c_motor"],
                               duration: float = 0.5, 
-                              position: float = 2.8) -> None:
+                              position: float = 2.8,
+                              plot: bool = False) -> None:
         """
         Perform bending motion in one direction
         """
@@ -522,12 +530,14 @@ class MuJoCoControlInterface:
         try:
             self.modify_equality_constraints(disable=True, 
                                          constraints=["disc1b", "disc4b"])
+            self.modify_equality_constraints(disable=False,
+                                             constraints=["disc2b", "disc3b"])
 
             self.step_simulation()
             self.sync_viewer()
 
             start_ctrl = np.zeros(len(actuator_ids))
-            target_ctrl = np.array([position if i%2 == 0 else -position for i in range(len(actuator_ids))])
+            target_ctrl = np.array([position, -position, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
             # Generate interpolated trajectory
             trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.dt, "linear")
@@ -539,6 +549,9 @@ class MuJoCoControlInterface:
                 time.sleep(self.dt)
               
             self.state_transition(RobotState.BENDING)  
+            if plot:
+               distance = self.euclidean_distance("block_a", "block_b")
+               self.distances.append((self.data.time, distance))
 
         except Exception as e:
             print(f"Unknown error: {e}")
@@ -546,9 +559,13 @@ class MuJoCoControlInterface:
     @require_state(RobotState.IDLE)
     def position_control_bend_right(self, 
                               actuator_names: list[str] = 
-                              ["spring3a_motor", "spring2c_motor"],
+                              ["spring3a_motor", "spring2c_motor",
+                                "spring4c_motor", "spring1a_motor",
+                                "spring4a_motor", "spring3c_motor",
+                                "spring2a_motor", "spring1c_motor"],
                               duration: float = 0.5, 
-                              position: float = 2.8) -> None:
+                              position: float = 2.8,
+                              plot: bool = False) -> None:
         """
         Perform bending motion in one direction
         """
@@ -564,12 +581,14 @@ class MuJoCoControlInterface:
         try:
             self.modify_equality_constraints(disable=True, 
                                          constraints=["disc2b", "disc3b"])
+            self.modify_equality_constraints(disable=False,
+                                             constraints=["disc1b", "disc4b"])
 
             self.step_simulation()
             self.sync_viewer()
 
             start_ctrl = np.zeros(len(actuator_ids))
-            target_ctrl = np.array([position if i%2 == 0 else -position for i in range(len(actuator_ids))])
+            target_ctrl = np.array([position, -position, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
             # Generate interpolated trajectory
             trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.dt, "linear")
@@ -581,6 +600,9 @@ class MuJoCoControlInterface:
                 time.sleep(self.dt)
               
             self.state_transition(RobotState.BENDING)  
+            if plot:
+               distance = self.euclidean_distance("block_a", "block_b")
+               self.distances.append((self.data.time, distance))
 
         except Exception as e:
             print(f"Unknown error: {e}")
