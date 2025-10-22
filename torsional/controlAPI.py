@@ -413,7 +413,8 @@ class MuJoCoControlInterface:
                                 actuator_names: list[str] = 
                                 ["spring2c_motor", "spring4c_motor"],
                                 duration: float = 0.5,
-                                position: float = 2.84) -> None:
+                                position: float = 2.84,
+                                plot: bool = False) -> None:
         """
         Perform twisting motion in one direction
         """
@@ -449,10 +450,13 @@ class MuJoCoControlInterface:
               
             self.state_transition(RobotState.TWISTING)
                 
-            while self.viewer.is_running():
-                self.step_simulation()
-                self.sync_viewer()
-                time.sleep(self.dt)
+            if plot:
+                distance = self.euclidean_distance("block_a", "block_b")
+                self.distances.append((self.data.time, distance))
+            # while self.viewer.is_running():
+            #     self.step_simulation()
+            #     self.sync_viewer()
+            #     time.sleep(self.dt)
 
         except Exception as e:
             print(f"Unknown error: {e}")
@@ -462,7 +466,8 @@ class MuJoCoControlInterface:
                                 actuator_names: list[str] = 
                                 ["spring1a_motor", "spring3a_motor"],
                                 duration: float = 0.5,
-                                position: float = 2.84) -> None:
+                                position: float = 2.84,
+                                plot: bool = False) -> None:
         """
         Perform twisting motion in one direction
         """
@@ -497,11 +502,16 @@ class MuJoCoControlInterface:
                 self.sync_viewer()
                 time.sleep(self.dt)
               
+            self.state_transition(RobotState.TWISTING)
+            
+            if plot:
+                distance = self.euclidean_distance("block_a", "block_b")
+                self.distances.append((self.data.time, distance))
                 
-            while self.viewer.is_running():
-                self.step_simulation()
-                self.sync_viewer()
-                time.sleep(self.dt)
+            # while self.viewer.is_running():
+            #     self.step_simulation()
+            #     self.sync_viewer()
+            #     time.sleep(self.dt)
 
         except Exception as e:
             print(f"Unknown error: {e}")
