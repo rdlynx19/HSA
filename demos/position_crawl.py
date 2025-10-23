@@ -1,4 +1,6 @@
 from torsional.controlAPI import MuJoCoControlInterface
+import matplotlib.pyplot as plt
+import numpy as np
 
 def main():
     """
@@ -16,6 +18,21 @@ def main():
     except KeyboardInterrupt:
         print("Simulation interrupted by user.")
     finally:
+        print(sim.trajectory)
+        plt.title("Trajectories of All Bodies")
+        plt.grid(True)
+        plt.xlabel("X position (m)")
+        plt.ylabel("Y position (m)")
+
+        # --- Simple plotting loop ---
+        for body, data in sim.trajectory.items():
+            times, poses = zip(*data)
+            poses = np.array(poses)
+            plt.plot(poses[:, 0], poses[:, 1], label=body)
+
+        plt.legend()
+        plt.axis("equal")
+        plt.show()
         sim.close_simulation()
 
 if __name__ == "__main__":

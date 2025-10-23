@@ -39,6 +39,8 @@ class MuJoCoControlInterface:
         self.viewer = None
         self.distances = []
         self.dt = self.model.opt.timestep
+        self.trajectory = {}
+        self.body_ids = {}
 
     def start_simulation(self) -> None:
         """
@@ -521,8 +523,11 @@ class MuJoCoControlInterface:
             self.sync_viewer()  
 
             while self.viewer.is_running():
-                self.position_control_extension(duration=duration, position=1.57, plot=plot)   
+                self.position_control_extension(duration=duration, 
+                                                position=1.57, plot=plot)   
+                self.record_trajectory()
                 self.position_control_contraction(duration=duration, plot=plot)
+                self.record_trajectory()
 
         except Exception as e:
             print(f"Unknown error: {e}")
@@ -871,6 +876,25 @@ class MuJoCoControlInterface:
         self.data.ctrl[actuator_ids] = ctrl_signals
 
         return pid_state
+
+    def record_trajectory(self, 
+                          tracked_bodies: list[str] = ["disc1b"]) -> None:
+        """
+        Record the trajectory of specified bodies over time
+        :param tracked_bodies: List of body names to track
+        """
+        if not hasattr(self, "trajectory"):
+            self.trajectory = {b: [] for b in tracked_bodies}
+            self.body_ids = {b: mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, b) for b in tracked_bodies}
+        
+        for body in tracked_bodies:
+            if body not in self.trajectory:
+                self.trajectory[body] = []
+                self.body_ids[body] = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, body)
+
+            body_id = self.body_ids[body]
+            pos = self.data.xpos[body_id].copy()
+            self.trajectory[body].append((self.data.time, pos))
 
     def view_model(self) -> None:
         """
