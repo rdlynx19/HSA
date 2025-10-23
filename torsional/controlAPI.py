@@ -254,7 +254,7 @@ class MuJoCoControlInterface:
                     contact.friction[3] = rolling_x
                 if rolling_y is not None:
                     contact.friction[4] = rolling_y
-                print(f"Friction parameters updated for contact {i}")
+                # print(f"Friction parameters updated for contact {i}")
                 updated_contacts.append(contact)
 
     def update_friction_side(self,
@@ -277,16 +277,16 @@ class MuJoCoControlInterface:
         def get_friction_params(geom_pairs):
             return [self.get_friction_parameters(geom1, geom2) for geom1, geom2 in geom_pairs]
         
-        print(f"Friction parameters before update:")
-        print("Block A:", get_friction_params(block_a_geoms))
-        print("Block B:", get_friction_params(block_b_geoms))
+        # print(f"Friction parameters before update:")
+        # print("Block A:", get_friction_params(block_a_geoms))
+        # print("Block B:", get_friction_params(block_b_geoms))
 
         if mode == "extension":
             block_a_val = 0.0001
-            block_b_val = 15
+            block_b_val = 0.5
         elif mode == "contraction":
             block_a_val = 0.0001
-            block_b_val = 15
+            block_b_val = 0.5
         else:
             print(f"Invalid mode: {mode}")
             return
@@ -296,9 +296,9 @@ class MuJoCoControlInterface:
             self.set_friction_parameters(g1, g2, tangential_x=block_a_val)
         for g1, g2 in block_b_geoms:
             self.set_friction_parameters(g1, g2, tangential_x=block_b_val)
-        print(f"Friction parameters after update:")
-        print("Block A:", get_friction_params(block_a_geoms))
-        print("Block B:", get_friction_params(block_b_geoms))
+        # print(f"Friction parameters after update:")
+        # print("Block A:", get_friction_params(block_a_geoms))
+        # print("Block B:", get_friction_params(block_b_geoms))
 
     @require_state(RobotState.IDLE, RobotState.EXTENDED)
     def velocity_control_drive(self, 
@@ -524,7 +524,7 @@ class MuJoCoControlInterface:
 
             while self.viewer.is_running():
                 self.position_control_extension(duration=duration, 
-                                                position=1.57, plot=plot)   
+                                                position=position, plot=plot)   
                 self.record_trajectory()
                 self.position_control_contraction(duration=duration, plot=plot)
                 self.record_trajectory()

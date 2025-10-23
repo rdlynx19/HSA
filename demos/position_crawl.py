@@ -18,7 +18,6 @@ def main():
     except KeyboardInterrupt:
         print("Simulation interrupted by user.")
     finally:
-        print(sim.trajectory)
         plt.title("Trajectories of All Bodies")
         plt.grid(True)
         plt.xlabel("X position (m)")

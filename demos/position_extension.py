@@ -15,7 +15,7 @@ def main():
         sim.start_simulation()
         sim.modify_equality_constraints(disable=True, 
                                          constraints=["disc1b", "disc2b", "disc3b", "disc4b"])
-        sim.position_control_extension(position=2.00, duration=5.0)
+        sim.position_control_extension(position=2.8, duration=5.0)
         sim.position_control_contraction(duration=5.0)
     except KeyboardInterrupt:
         print("Simulation interrupted by user.")
