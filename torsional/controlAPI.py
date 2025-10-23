@@ -456,7 +456,7 @@ class MuJoCoControlInterface:
                                             constraints=["disc1b", "disc2b", "disc3b", "disc4b"])
 
             self.step_simulation()
-            self.sync_viewer()
+            self.sync_viewer()  
 
             while self.viewer.is_running():
                 self.position_control_extension(duration=0.5, position=1.57, plot=plot)   
