@@ -195,7 +195,64 @@ class MuJoCoControlInterface:
                 self.data.eq_active[i] = 0 if disable else 1
 
         print(f"Equality constraints updated: {self.data.eq_active}")
-       
+
+    def get_friction_parameters(self, geom1_name: str, geom2_name: str) -> dict[str, float]:
+        """
+        Get the friction parameters between two bodies
+        :param geom1_name: Name of the first geometry
+        :param geom2_name: Name of the second geometry
+
+        :return: Dictionary of friction parameters
+        """
+        geom1_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, geom1_name)
+        geom2_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, geom2_name)
+
+        for i in range(self.data.ncon):
+            contact = self.data.contact[i]
+            if (contact.geom1 == geom1_id and contact.geom2 == geom2_id) or (contact.geom1 == geom2_id and contact.geom2 == geom1_id):
+                friction_params = {
+                    "contact_id": i,
+                    "tangential_x": contact.friction[0],
+                    "tangential_y": contact.friction[1],
+                    "rolling_x": contact.friction[3],
+                    "rolling_y": contact.friction[4],
+                }
+                return friction_params
+
+        return None
+    
+    def set_friction_parameters(self, geom1_name: str, 
+                                geom2_name: str,
+                                tangential_x: float = None,
+                                tangential_y: float = None,
+                                rolling_x: float = None,
+                                rolling_y: float = None) -> None:
+        """
+        Set the friction parameters between two bodies
+        :param geom1_name: Name of the first geometry
+        :param geom2_name: Name of the second geometry
+        :param tangential_x: New tangential friction in x direction
+        :param tangential_y: New tangential friction in y direction
+        :param rolling_x: New rolling friction in x direction
+        :param rolling_y: New rolling friction in y direction
+        """
+        geom1_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, geom1_name)
+        geom2_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, geom2_name)
+
+        for i in range(self.data.ncon):
+            contact = self.data.contact[i]
+            if (contact.geom1 == geom1_id and contact.geom2 == geom2_id) or (contact.geom1 == geom2_id and contact.geom2 == geom1_id):
+                if tangential_x is not None:
+                    contact.friction[0] = tangential_x
+                if tangential_y is not None:
+                    contact.friction[1] = tangential_y
+                if rolling_x is not None:
+                    contact.friction[3] = rolling_x
+                if rolling_y is not None:
+                    contact.friction[4] = rolling_y
+                print(f"Friction parameters updated for contact {i}")
+                return
+
     @require_state(RobotState.IDLE, RobotState.EXTENDED)
     def velocity_control_drive(self, 
                                actuator_names: list[str] = 
@@ -764,10 +821,11 @@ class MuJoCoControlInterface:
             self.sync_viewer()
             
             while self.viewer.is_running():
+                print(f"self.get_friction_parameters('cylinder3a_con', 'floor'): {self.get_friction_parameters('cylinder3a_con', 'floor')}")
                 self.step_simulation()
                 self.sync_viewer()
                 time.sleep(self.dt)
-        except Exception as e:
+        except Exception as e:            
             print(f"Unknown error: {e}")
 
     
