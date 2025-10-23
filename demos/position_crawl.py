@@ -1,4 +1,6 @@
 from torsional.controlAPI import MuJoCoControlInterface
+import matplotlib.pyplot as plt
+import numpy as np
 
 def main():
     """
@@ -12,10 +14,24 @@ def main():
     sim.enable_actuator_group(1)
 
     try:
-        sim.position_control_crawl(position=2.14, lock=True)
+        sim.position_control_crawl(position=2.14, lock=True, duration=0.5)
     except KeyboardInterrupt:
         print("Simulation interrupted by user.")
     finally:
+        plt.title("Trajectories of All Bodies")
+        plt.grid(True)
+        plt.xlabel("X position (m)")
+        plt.ylabel("Y position (m)")
+
+        # --- Simple plotting loop ---
+        for body, data in sim.trajectory.items():
+            times, poses = zip(*data)
+            poses = np.array(poses)
+            plt.plot(poses[:, 0], poses[:, 1], label=body)
+
+        plt.legend()
+        plt.axis("equal")
+        plt.show()
         sim.close_simulation()
 
 if __name__ == "__main__":

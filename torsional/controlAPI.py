@@ -39,6 +39,8 @@ class MuJoCoControlInterface:
         self.viewer = None
         self.distances = []
         self.dt = self.model.opt.timestep
+        self.trajectory = {}
+        self.body_ids = {}
 
     def start_simulation(self) -> None:
         """
@@ -195,7 +197,109 @@ class MuJoCoControlInterface:
                 self.data.eq_active[i] = 0 if disable else 1
 
         print(f"Equality constraints updated: {self.data.eq_active}")
-       
+
+    def get_friction_parameters(self, geom1_name: str, geom2_name: str) -> dict[str, float]:
+        """
+        Get the friction parameters between two bodies
+        :param geom1_name: Name of the first geometry
+        :param geom2_name: Name of the second geometry
+
+        :return: Dictionary of friction parameters
+        """
+        geom1_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, geom1_name)
+        geom2_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, geom2_name)
+
+        for i in range(self.data.ncon):
+            contact = self.data.contact[i]
+            if (contact.geom1 == geom1_id and contact.geom2 == geom2_id) or (contact.geom1 == geom2_id and contact.geom2 == geom1_id):
+                friction_params = {
+                    "contact_id": i,
+                    "tangential_x": contact.friction[0],
+                    "tangential_y": contact.friction[1],
+                    "rolling_x": contact.friction[3],
+                    "rolling_y": contact.friction[4],
+                }
+                return friction_params
+
+        return None
+    
+    def set_friction_parameters(self, geom1_name: str, 
+                                geom2_name: str,
+                                tangential_x: float = None,
+                                tangential_y: float = None,
+                                rolling_x: float = None,
+                                rolling_y: float = None) -> None:
+        """
+        Set the friction parameters between two bodies
+        :param geom1_name: Name of the first geometry
+        :param geom2_name: Name of the second geometry
+        :param tangential_x: New tangential friction in x direction
+        :param tangential_y: New tangential friction in y direction
+        :param rolling_x: New rolling friction in x direction
+        :param rolling_y: New rolling friction in y direction
+        """
+        geom1_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, geom1_name)
+        geom2_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, geom2_name)
+
+        updated_contacts = []
+
+        for i in range(self.data.ncon):
+            contact = self.data.contact[i]
+            if (contact.geom1 == geom1_id and contact.geom2 == geom2_id) or (contact.geom1 == geom2_id and contact.geom2 == geom1_id):
+                if tangential_x is not None:
+                    contact.friction[0] = tangential_x
+                if tangential_y is not None:
+                    contact.friction[1] = tangential_y
+                if rolling_x is not None:
+                    contact.friction[3] = rolling_x
+                if rolling_y is not None:
+                    contact.friction[4] = rolling_y
+                # print(f"Friction parameters updated for contact {i}")
+                updated_contacts.append(contact)
+
+    def update_friction_side(self,
+                             side: str = "block_a", 
+                             mode: str = "extension") -> None:
+        """
+        Update friction parameters based on the side and mode of operation
+        :param side: Side of the robot ("block_a" or "block_b")
+        :param mode: Mode of operation ("extension" or "contraction")
+        """
+        if self.data.ncon == 0:
+            print(f"No contacts to update friction for.")
+            return
+        
+        
+        # Define geom pairs for both sides
+        block_a_geoms = [("cylinder3a_con", "floor"), ("cylinder4c_con", "floor")]
+        block_b_geoms = [("cylinder3c_con", "floor"), ("cylinder4a_con", "floor")]
+
+        def get_friction_params(geom_pairs):
+            return [self.get_friction_parameters(geom1, geom2) for geom1, geom2 in geom_pairs]
+        
+        # print(f"Friction parameters before update:")
+        # print("Block A:", get_friction_params(block_a_geoms))
+        # print("Block B:", get_friction_params(block_b_geoms))
+
+        if mode == "extension":
+            block_a_val = 0.0001
+            block_b_val = 0.5
+        elif mode == "contraction":
+            block_a_val = 0.0001
+            block_b_val = 0.5
+        else:
+            print(f"Invalid mode: {mode}")
+            return
+        
+        # Apply friction updates based on the side
+        for g1, g2 in block_a_geoms:
+            self.set_friction_parameters(g1, g2, tangential_x=block_a_val)
+        for g1, g2 in block_b_geoms:
+            self.set_friction_parameters(g1, g2, tangential_x=block_b_val)
+        # print(f"Friction parameters after update:")
+        # print("Block A:", get_friction_params(block_a_geoms))
+        # print("Block B:", get_friction_params(block_b_geoms))
+
     @require_state(RobotState.IDLE, RobotState.EXTENDED)
     def velocity_control_drive(self, 
                                actuator_names: list[str] = 
@@ -292,9 +396,17 @@ class MuJoCoControlInterface:
         if self.viewer is None:
             self.start_simulation()
         try:
-
+            
             self.step_simulation()
             self.sync_viewer()
+            
+            while(self.data.ncon == 0):
+                self.step_simulation()
+                self.sync_viewer()
+                time.sleep(self.dt)
+
+            self.update_friction_side(side="block_a", mode="extension")
+            self.update_friction_side(side="block_b", mode="extension")
 
             start_ctrl = np.zeros(len(actuator_ids))
             target_ctrl = np.array([position if i % 2 == 0 else -position for i in range(len(actuator_ids))])
@@ -342,6 +454,15 @@ class MuJoCoControlInterface:
 
             self.step_simulation()
             self.sync_viewer()
+
+            while(self.data.ncon == 0):
+                self.step_simulation()
+                self.sync_viewer()
+                time.sleep(self.dt)
+
+            self.update_friction_side(side="block_a", mode="contraction")
+            self.update_friction_side(side="block_b", mode="contraction")
+
 
             start_ctrl = np.copy(self.data.ctrl[actuator_ids])
             target_ctrl = np.zeros(len(actuator_ids))
@@ -399,11 +520,14 @@ class MuJoCoControlInterface:
                                             constraints=["disc1b", "disc2b", "disc3b", "disc4b"])
 
             self.step_simulation()
-            self.sync_viewer()
+            self.sync_viewer()  
 
             while self.viewer.is_running():
-                self.position_control_extension(duration=0.5, position=1.57, plot=plot)   
-                self.position_control_contraction(duration=0.5, plot=plot)
+                self.position_control_extension(duration=duration, 
+                                                position=position, plot=plot)   
+                self.record_trajectory()
+                self.position_control_contraction(duration=duration, plot=plot)
+                self.record_trajectory()
 
         except Exception as e:
             print(f"Unknown error: {e}")
@@ -753,6 +877,25 @@ class MuJoCoControlInterface:
 
         return pid_state
 
+    def record_trajectory(self, 
+                          tracked_bodies: list[str] = ["disc1b"]) -> None:
+        """
+        Record the trajectory of specified bodies over time
+        :param tracked_bodies: List of body names to track
+        """
+        if not hasattr(self, "trajectory"):
+            self.trajectory = {b: [] for b in tracked_bodies}
+            self.body_ids = {b: mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, b) for b in tracked_bodies}
+        
+        for body in tracked_bodies:
+            if body not in self.trajectory:
+                self.trajectory[body] = []
+                self.body_ids[body] = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, body)
+
+            body_id = self.body_ids[body]
+            pos = self.data.xpos[body_id].copy()
+            self.trajectory[body].append((self.data.time, pos))
+
     def view_model(self) -> None:
         """
         View the MuJoCo model in a passive viewer
@@ -762,12 +905,12 @@ class MuJoCoControlInterface:
         try:
             self.step_simulation()
             self.sync_viewer()
-            
+
             while self.viewer.is_running():
                 self.step_simulation()
                 self.sync_viewer()
                 time.sleep(self.dt)
-        except Exception as e:
+        except Exception as e:            
             print(f"Unknown error: {e}")
 
     

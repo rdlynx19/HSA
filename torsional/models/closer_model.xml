@@ -174,10 +174,10 @@
 
     <contact>
         <!-- For friction, making the first 2 values different results in anisotropic tangential friction, last 2 results in anisotropic rolling friction -->
-        <pair name="cylinder3a_ground" geom1="cylinder3a_con" geom2="floor" condim="3" friction="1 0.1 0.0005 0.001 0.0001"/>
-        <pair name="cylinder3c_ground" geom1="cylinder3c_con" geom2="floor" condim="3" friction="1 0.1 0.0005 0.001 0.0001"/>
-        <pair name="cylinder4a_ground" geom1="cylinder4a_con" geom2="floor" condim="3" friction="1 0.1 0.0005 0.001 0.0001"/>
-        <pair name="cylinder4c_ground" geom1="cylinder4c_con" geom2="floor" condim="3" friction="1 0.1 0.0005 0.001 0.0001"/>
+        <pair name="cylinder3a_ground" geom1="cylinder3a_con" geom2="floor" condim="3" friction="1 2.1 0.0005 2.1 0.0001"/>
+        <pair name="cylinder3c_ground" geom1="cylinder3c_con" geom2="floor" condim="3" friction="1 2.1 0.0005 2.1 0.0001"/>
+        <pair name="cylinder4a_ground" geom1="cylinder4a_con" geom2="floor" condim="3" friction="1 2.1 0.0005 2.1 0.0001"/>
+        <pair name="cylinder4c_ground" geom1="cylinder4c_con" geom2="floor" condim="3" friction="1 2.1 0.0005 2.1 0.0001"/>
     </contact>
 
     <actuator>

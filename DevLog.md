@@ -103,14 +103,20 @@
 - Added function to dynamically manipulate the equality constraints during runtime so we can quickly switch from one mode to another
 - Look Up Table for knowing which constraints are active/inactive during a particular mode
 
-	| Locomotion Mode | Constraints Active | Constraints Inactive | Notes |
-	|-----------------|-------------------- |---------------------| ------|
-	| Bend Right|1 and 4|  2 and 3| |
-	| Bend Left |2 and 3| 1 and 4| |
-	| Twist 1|1 and 3 | 2 and 4|
-	|Twist 2| 2 and 4| 1 and 3| 
+| Locomotion Mode | Constraints Active | Constraints Inactive | Notes |
+|-----------------|-------------------- |---------------------| ------|
+| Bend Right|1 and 4|  2 and 3| |
+| Bend Left |2 and 3| 1 and 4| |
+| Twist 1|1 and 3 | 2 and 4|
+|Twist 2| 2 and 4| 1 and 3| 
 
 - Decorator to allow transitions only between valid states: Ex: No transition from Bending -> Extension. You can transition from Bending -> Idle -> Extension
 - Comparing extension when the discs are locked with extension when the discs are unlocked does not show a lot of difference. This begs the question if the DOF at the disc is redundant.
 	- It is not redundant because modes like bending do not work without a moving disc
 - Added PID control for velocity but need to tune the gains
+
+### Mujoco (Week 11 10/16 - 10/23)
+- Added plots to compare movement in horizontal and vertical modes
+- You can modify friction between contacts by modifying contact parameters 
+	- This can be achieved by the `get` and `set` functions in the API
+	
