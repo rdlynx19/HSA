@@ -239,6 +239,8 @@ class MuJoCoControlInterface:
         geom1_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, geom1_name)
         geom2_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, geom2_name)
 
+        updated_contacts = []
+
         for i in range(self.data.ncon):
             contact = self.data.contact[i]
             if (contact.geom1 == geom1_id and contact.geom2 == geom2_id) or (contact.geom1 == geom2_id and contact.geom2 == geom1_id):
@@ -251,7 +253,50 @@ class MuJoCoControlInterface:
                 if rolling_y is not None:
                     contact.friction[4] = rolling_y
                 print(f"Friction parameters updated for contact {i}")
-                return
+                updated_contacts.append(contact)
+
+    def update_friction_side(self,
+                             side: str = "block_a", 
+                             mode: str = "extension") -> None:
+        """
+        Update friction parameters based on the side and mode of operation
+        :param side: Side of the robot ("block_a" or "block_b")
+        :param mode: Mode of operation ("extension" or "contraction")
+        """
+        if self.data.ncon == 0:
+            print(f"No contacts to update friction for.")
+            return
+        
+        
+        # Define geom pairs for both sides
+        block_a_geoms = [("cylinder3a_con", "floor"), ("cylinder4c_con", "floor")]
+        block_b_geoms = [("cylinder3c_con", "floor"), ("cylinder4a_con", "floor")]
+
+        def get_friction_params(geom_pairs):
+            return [self.get_friction_parameters(geom1, geom2) for geom1, geom2 in geom_pairs]
+        
+        print(f"Friction parameters before update:")
+        print("Block A:", get_friction_params(block_a_geoms))
+        print("Block B:", get_friction_params(block_b_geoms))
+
+        if mode == "extension":
+            block_a_val = 0.0001
+            block_b_val = 15
+        elif mode == "contraction":
+            block_a_val = 0.0001
+            block_b_val = 15
+        else:
+            print(f"Invalid mode: {mode}")
+            return
+        
+        # Apply friction updates based on the side
+        for g1, g2 in block_a_geoms:
+            self.set_friction_parameters(g1, g2, tangential_x=block_a_val)
+        for g1, g2 in block_b_geoms:
+            self.set_friction_parameters(g1, g2, tangential_x=block_b_val)
+        print(f"Friction parameters after update:")
+        print("Block A:", get_friction_params(block_a_geoms))
+        print("Block B:", get_friction_params(block_b_geoms))
 
     @require_state(RobotState.IDLE, RobotState.EXTENDED)
     def velocity_control_drive(self, 
@@ -349,9 +394,17 @@ class MuJoCoControlInterface:
         if self.viewer is None:
             self.start_simulation()
         try:
-
+            
             self.step_simulation()
             self.sync_viewer()
+            
+            while(self.data.ncon == 0):
+                self.step_simulation()
+                self.sync_viewer()
+                time.sleep(self.dt)
+
+            self.update_friction_side(side="block_a", mode="extension")
+            self.update_friction_side(side="block_b", mode="extension")
 
             start_ctrl = np.zeros(len(actuator_ids))
             target_ctrl = np.array([position if i % 2 == 0 else -position for i in range(len(actuator_ids))])
@@ -399,6 +452,15 @@ class MuJoCoControlInterface:
 
             self.step_simulation()
             self.sync_viewer()
+
+            while(self.data.ncon == 0):
+                self.step_simulation()
+                self.sync_viewer()
+                time.sleep(self.dt)
+
+            self.update_friction_side(side="block_a", mode="contraction")
+            self.update_friction_side(side="block_b", mode="contraction")
+
 
             start_ctrl = np.copy(self.data.ctrl[actuator_ids])
             target_ctrl = np.zeros(len(actuator_ids))
@@ -459,8 +521,8 @@ class MuJoCoControlInterface:
             self.sync_viewer()  
 
             while self.viewer.is_running():
-                self.position_control_extension(duration=0.5, position=1.57, plot=plot)   
-                self.position_control_contraction(duration=0.5, plot=plot)
+                self.position_control_extension(duration=duration, position=1.57, plot=plot)   
+                self.position_control_contraction(duration=duration, plot=plot)
 
         except Exception as e:
             print(f"Unknown error: {e}")
@@ -819,9 +881,8 @@ class MuJoCoControlInterface:
         try:
             self.step_simulation()
             self.sync_viewer()
-            
+
             while self.viewer.is_running():
-                print(f"self.get_friction_parameters('cylinder3a_con', 'floor'): {self.get_friction_parameters('cylinder3a_con', 'floor')}")
                 self.step_simulation()
                 self.sync_viewer()
                 time.sleep(self.dt)

@@ -114,3 +114,9 @@
 - Comparing extension when the discs are locked with extension when the discs are unlocked does not show a lot of difference. This begs the question if the DOF at the disc is redundant.
 	- It is not redundant because modes like bending do not work without a moving disc
 - Added PID control for velocity but need to tune the gains
+
+### Mujoco (Week 11 10/16 - 10/23)
+- Added plots to compare movement in horizontal and vertical modes
+- You can modify friction between contacts by modifying contact parameters 
+	- This can be achieved by the `get` and `set` functions in the API
+	

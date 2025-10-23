@@ -12,7 +12,7 @@ def main():
     sim.enable_actuator_group(1)
 
     try:
-        sim.position_control_crawl(position=2.14, lock=True)
+        sim.position_control_crawl(position=2.14, lock=True, duration=0.5)
     except KeyboardInterrupt:
         print("Simulation interrupted by user.")
     finally:
