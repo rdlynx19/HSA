@@ -127,5 +127,18 @@
 	- The middle disc is an unactuated body with 1DOF, (rotation around the x-axis) provided by a hinge joint
 	- Why is this DOF necessary and what happens if we remove it?
 		- Rotation in the disc allows us to tension the spring and generate forces which allow us to achieve the extension and contraction motion
-		- 
-		- 
+		- You can still perform extension/contraction (how?) if you remove this DOF, but bending fails terribly
+		- Comparison videos are available on GitHub
+	- So if we are forced to keep the DOF, we should be able to dynamically modify it for our advantage
+	- Locking that DOF when not in use, gives us added stability and control
+- Motion profiles v/s actuated Motors
+
+| Locomotion Mode | Motors Active and Ranges | Notes |
+|-----------------|-------------------- |---------------------|
+|Extension| 1A, 2A, 3A, 4A (+ve) <br> 1C, 2C, 3C, 4C (-ve)| All Motors are in use|
+|Contraction||All motors are brought back to zero from their current state|
+|Crawling| |Same motors as in Extension/Contraction but in alternating fashion|
+| Bend Left|1A(+ve) 4C(-ve)|All other motors are set to zero, Units 2 and 3 are constrained |
+| Bend Right |3A(+ve) 2C(-ve)|All other motors are set to zero, Units 1 and 4 are constrained |
+| Twist 1|| |
+|Twist 2| | | 
