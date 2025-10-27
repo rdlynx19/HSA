@@ -515,9 +515,9 @@ class MuJoCoControlInterface:
         if self.viewer is None:
             self.start_simulation()
         try:
-            if not lock:
-                self.modify_equality_constraints(disable=True, 
-                                            constraints=["disc1b", "disc2b", "disc3b", "disc4b"])
+            # if not lock:
+            #     self.modify_equality_constraints(disable=True, 
+            #                                 constraints=["disc1b", "disc2b", "disc3b", "disc4b"])
 
             self.step_simulation()
             self.sync_viewer()  
@@ -662,10 +662,10 @@ class MuJoCoControlInterface:
         if self.viewer is None:
             self.start_simulation()
         try:
-            self.modify_equality_constraints(disable=True, 
-                                         constraints=["disc1b", "disc4b"])
-            self.modify_equality_constraints(disable=False,
-                                             constraints=["disc2b", "disc3b"])
+            # self.modify_equality_constraints(disable=True, 
+            #                              constraints=["disc1b", "disc4b"])
+            # self.modify_equality_constraints(disable=False,
+            #                                  constraints=["disc2b", "disc3b"])
 
             self.step_simulation()
             self.sync_viewer()
@@ -713,10 +713,10 @@ class MuJoCoControlInterface:
         if self.viewer is None:
             self.start_simulation()
         try:
-            self.modify_equality_constraints(disable=True, 
-                                         constraints=["disc2b", "disc3b"])
-            self.modify_equality_constraints(disable=False,
-                                             constraints=["disc1b", "disc4b"])
+            # self.modify_equality_constraints(disable=True, 
+            #                              constraints=["disc2b", "disc3b"])
+            # self.modify_equality_constraints(disable=False,
+            #                                  constraints=["disc1b", "disc4b"])
 
             self.step_simulation()
             self.sync_viewer()
