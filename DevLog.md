@@ -119,4 +119,13 @@
 - Added plots to compare movement in horizontal and vertical modes
 - You can modify friction between contacts by modifying contact parameters 
 	- This can be achieved by the `get` and `set` functions in the API
-	
+- Achieved inchworm motion very similar to the actual robot. More testing needed
+
+### Mujoco (Week 12 10/23 - 10/30)
+- Added diagram of model indicating motor ranges and position. (Need to add handedness to compare with the real robot)
+- Explanation of locking mechanism:
+	- The middle disc is an unactuated body with 1DOF, (rotation around the x-axis) provided by a hinge joint
+	- Why is this DOF necessary and what happens if we remove it?
+		- Rotation in the disc allows us to tension the spring and generate forces which allow us to achieve the extension and contraction motion
+		- 
+		- 
