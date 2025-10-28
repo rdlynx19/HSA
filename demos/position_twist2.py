@@ -13,7 +13,7 @@ def main():
 
     try:
         sim.start_simulation()
-        sim.position_control_twist2(position=3.14, duration=5.00)
+        sim.position_control_twist2(position=2.8, duration=5.00)
     except KeyboardInterrupt:
         print("Simulation interrupted by user.")
         sim.close_simulation()
