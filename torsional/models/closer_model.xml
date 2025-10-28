@@ -193,9 +193,9 @@
     </actuator>
     <actuator>
         <position name="spring1a_motor" group="1" joint="cw_cont_1a_top" kp="10"  ctrlrange="0 3.14" />
-        <position name="spring2a_motor" group="1" joint="cw_cont_2a_top" kp="10"  ctrlrange="0 3.14" />
+        <position name="spring2a_motor" group="1" joint="cw_cont_2a_top" kp="100"  ctrlrange="0 3.14" />
         <position name="spring3a_motor" group="1" joint="cw_cont_3a_btm" kp="10"  ctrlrange="0 3.14" />
-        <position name="spring4a_motor" group="1" joint="cw_cont_4a_btm" kp="10"  ctrlrange="0 3.14" />
+        <position name="spring4a_motor" group="1" joint="cw_cont_4a_btm" kp="100"  ctrlrange="0 3.14" />
 
         <position name="spring1c_motor" group="1" joint="cw_ext_1c_top" kp="10"  ctrlrange="-3.14 0" />
         <position name="spring2c_motor" group="1" joint="cw_ext_2c_top" kp="10"  ctrlrange="-3.14 0" />
@@ -232,19 +232,19 @@
             <site site="siteM1c2"/>
         </spatial>
 
-        <spatial name="inter2a1" width="0.005" rgba="1 1 0 1" stiffness="3000" damping="15">
+        <spatial name="inter2a1" width="0.005" rgba="1 1 0 1" stiffness="5000" damping="25">
             <site site="siteM2a1"/>
             <site site="siteM2b1"/>
         </spatial>
-        <spatial name="inter2a2" width="0.005" rgba="1 1 0 1" stiffness="3000" damping="15">
+        <spatial name="inter2a2" width="0.005" rgba="1 1 0 1" stiffness="5000" damping="25">
             <site site="siteM2a2"/>
             <site site="siteM2b2"/>
         </spatial>
-        <spatial name="inter2b1" width="0.005" rgba="1 1 0 1" stiffness="3000" damping="15">
+        <spatial name="inter2b1" width="0.005" rgba="1 1 0 1" stiffness="5000" damping="25">
             <site site="siteM2b3"/>
             <site site="siteM2c1"/>
         </spatial>
-        <spatial name="inter2b2" width="0.005" rgba="1 1 0 1" stiffness="3000" damping="15">
+        <spatial name="inter2b2" width="0.005" rgba="1 1 0 1" stiffness="5000" damping="25">
             <site site="siteM2b4"/>
             <site site="siteM2c2"/>
         </spatial>
@@ -266,19 +266,19 @@
             <site site="siteM3c2"/>
         </spatial>
 
-        <spatial name="inter4a1" width="0.005" rgba="0 1 0.5 1" stiffness="3000" damping="15">
+        <spatial name="inter4a1" width="0.005" rgba="0 1 0.5 1" stiffness="5000" damping="25">
             <site site="siteM4a1"/>
             <site site="siteM4b1"/>
         </spatial>
-        <spatial name="inter4a2" width="0.005" rgba="0 1 0.5 1" stiffness="3000" damping="15">
+        <spatial name="inter4a2" width="0.005" rgba="0 1 0.5 1" stiffness="5000" damping="25">
             <site site="siteM4a2"/>
             <site site="siteM4b2"/>
         </spatial>
-        <spatial name="inter4b1" width="0.005" rgba="0 1 0.5 1" stiffness="3000" damping="15">
+        <spatial name="inter4b1" width="0.005" rgba="0 1 0.5 1" stiffness="5000" damping="25">
             <site site="siteM4b3"/>
             <site site="siteM4c1"/>
         </spatial>
-        <spatial name="inter4b2" width="0.005" rgba="0 1 0.5 1" stiffness="3000" damping="15">
+        <spatial name="inter4b2" width="0.005" rgba="0 1 0.5 1" stiffness="5000" damping="25">
             <site site="siteM4b4"/>
             <site site="siteM4c2"/>
         </spatial>
