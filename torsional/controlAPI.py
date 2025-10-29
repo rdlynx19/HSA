@@ -577,6 +577,7 @@ class MuJoCoControlInterface:
             if plot:
                 distance = self.euclidean_distance("block_a", "block_b")
                 self.distances.append((self.data.time, distance))
+            
             # while self.viewer.is_running():
             #     self.step_simulation()
             #     self.sync_viewer()
