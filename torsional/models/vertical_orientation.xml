@@ -28,7 +28,7 @@
                 <body name="cylinder1a" pos="0.03 0.10 0.10">
                     <inertial pos="0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
                     <joint name="cw_cont_1a_top" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
-                    <geom name="cylinder1a_con" type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" rgba="0.9 0.05 0.25 1" />
+                    <geom name="cylinder1a_con" type="cylinder" fromto="0 0 0 0.15 0 0" size="0.04" rgba="0.9 0.05 0.25 1" />
 
                     <site name="siteM1a1" pos="0.03 0.03 0.015"/>
                     <site name="siteM1a2" pos="0.03 -0.03 -0.015"/>
@@ -52,7 +52,7 @@
                 <body name="cylinder2c" pos="0.03 -0.10 0.10">
                     <inertial pos="0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
                     <joint name="cw_ext_2c_top" type="hinge" axis="1 0 0"/>
-                    <geom name="cylinder2c_con" type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" rgba="0.0 0.5 0.175 1"/>
+                    <geom name="cylinder2c_con" type="cylinder" fromto="0 0 0 0.15 0 0" size="0.04" rgba="0.0 0.5 0.175 1"/>
 
                     <site name="siteM2c1" pos="0.03 0.03 -0.015"/>
                     <site name="siteM2c2" pos="0.03 -0.03 0.015"/>
@@ -63,7 +63,7 @@
                 <body name="cylinder3a" pos="0.03 -0.10 -0.10">
                     <inertial pos="0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
                     <joint name="cw_cont_3a_btm" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
-                    <geom name="cylinder3a_con" type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" rgba="0.9 0.9 0.02 1"/>
+                    <geom name="cylinder3a_con" type="cylinder" fromto="0 0 0 0.15 0 0" size="0.04" rgba="0.9 0.9 0.02 1"/>
                 
                     <site name="siteM3a1" pos="0.03 0.03 0.015"/>
                     <site name="siteM3a2" pos="0.03 -0.03 -0.015"/>
@@ -87,7 +87,7 @@
                 <body name="cylinder4c" pos="0.03 0.10 -0.10">
                     <inertial pos="0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
                     <joint name="cw_ext_4c_btm" type="hinge" axis="1 0 0"/>
-                    <geom name="cylinder4c_con" type="cylinder" fromto="0 0 0 0.05 0 0" size="0.04" />
+                    <geom name="cylinder4c_con" type="cylinder" fromto="0 0 0 0.15 0 0" size="0.04" />
                     <site name="siteM4c1" pos="0.03 0.03 -0.015"/>
                     <site name="siteM4c2" pos="0.03 -0.03 0.015"/>
                 </body>
@@ -104,7 +104,7 @@
                 <body name="cylinder1c" pos="-0.03 0.10 0.10">
                     <inertial pos="-0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
                     <joint name="cw_ext_1c_top" type="hinge" axis="1 0 0"/>
-                    <geom name="cylinder1c_con" type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" rgba="0.9 0.05 0.25 1"/>
+                    <geom name="cylinder1c_con" type="cylinder" fromto="0 0 0 -0.15 0 0" size="0.04" rgba="0.9 0.05 0.25 1"/>
 
                     <site name="siteM1c1" pos="-0.03 0.03 -0.015"/>
                     <site name="siteM1c2" pos="-0.03 -0.03 0.015"/>
@@ -114,7 +114,7 @@
                 <body name="cylinder3c" pos="-0.03 -0.10 -0.10">
                     <inertial pos="-0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
                     <joint name="cw_ext_3c_btm" type="hinge" axis="1 0 0"/>
-                    <geom name="cylinder3c_con" type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" rgba="0.9 0.9 0.02 1"/>
+                    <geom name="cylinder3c_con" type="cylinder" fromto="0 0 0 -0.15 0 0" size="0.04" rgba="0.9 0.9 0.02 1"/>
 
                     <site name="siteM3c1" pos="-0.03 0.03 -0.015"/>
                     <site name="siteM3c2" pos="-0.03 -0.03 0.015"/>
@@ -124,7 +124,7 @@
                 <body name="cylinder2a" pos="-0.03 -0.10 0.10">
                     <inertial pos="-0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
                     <joint name="cw_cont_2a_top" type="hinge" axis="1 0 0" limited="true" range="0 3.14"/>
-                    <geom name="cylinder2a_con" type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" rgba="0.0 0.5 0.175 1"/>
+                    <geom name="cylinder2a_con" type="cylinder" fromto="0 0 0 -0.15 0 0" size="0.04" rgba="0.0 0.5 0.175 1"/>
             
                     <site name="siteM2a1" pos="-0.03 0.03 0.015"/>
                     <site name="siteM2a2" pos="-0.03 -0.03 -0.015"/>
@@ -149,8 +149,8 @@
                 <body name="cylinder4a" pos="-0.03 0.10 -0.10">
                     <inertial pos="-0.035 0 0" mass="0.1" diaginertia="0.0001 0.0002 0.0002"/>
                     <joint name="cw_cont_4a_btm" type="hinge" axis="1 0 0" limited="true" range="0 3.14" />
-                    <geom name="cylinder4a_con" type="cylinder" fromto="0 0 0 -0.05 0 0" size="0.04" />
-                    
+                    <geom name="cylinder4a_con" type="cylinder" fromto="0 0 0 -0.15 0 0" size="0.04" />
+
                     <site name="siteM4a1" pos="-0.03 0.03 0.015"/>
                     <site name="siteM4a2" pos="-0.03 -0.03 -0.015"/>
                 </body>
@@ -199,15 +199,15 @@
         <motor name="spring4c_torque" group="0" joint="cw_ext_4c_btm" gear="0.05" ctrlrange="-5 5"/>
     </actuator>
     <actuator>
-        <position name="spring1a_motor" group="1" joint="cw_cont_1a_top" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring2a_motor" group="1" joint="cw_cont_2a_top" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring3a_motor" group="1" joint="cw_cont_3a_btm" kp="10" ctrlrange="0 3.14"/>
-        <position name="spring4a_motor" group="1" joint="cw_cont_4a_btm" kp="10" ctrlrange="0 3.14"/>
+        <position name="spring1a_motor" group="1" joint="cw_cont_1a_top" kp="100" ctrlrange="0 3.14"/>
+        <position name="spring2a_motor" group="1" joint="cw_cont_2a_top" kp="100" ctrlrange="0 3.14"/>
+        <position name="spring3a_motor" group="1" joint="cw_cont_3a_btm" kp="100" ctrlrange="0 3.14"/>
+        <position name="spring4a_motor" group="1" joint="cw_cont_4a_btm" kp="100" ctrlrange="0 3.14"/>
 
-        <position name="spring1c_motor" group="1" joint="cw_ext_1c_top" kp="10" ctrlrange="-3.14 0"/>
-        <position name="spring2c_motor" group="1" joint="cw_ext_2c_top" kp="10" ctrlrange="-3.14 0"/>
-        <position name="spring3c_motor" group="1" joint="cw_ext_3c_btm" kp="10" ctrlrange="-3.14 0"/>
-        <position name="spring4c_motor" group="1" joint="cw_ext_4c_btm" kp="10" ctrlrange="-3.14 0"/>
+        <position name="spring1c_motor" group="1" joint="cw_ext_1c_top" kp="100" ctrlrange="-3.14 0"/>
+        <position name="spring2c_motor" group="1" joint="cw_ext_2c_top" kp="100" ctrlrange="-3.14 0"/>
+        <position name="spring3c_motor" group="1" joint="cw_ext_3c_btm" kp="100" ctrlrange="-3.14 0"/>
+        <position name="spring4c_motor" group="1" joint="cw_ext_4c_btm" kp="100" ctrlrange="-3.14 0"/>
     </actuator>
     <actuator>
         <velocity name="spring1a_vel" group="2" joint="cw_cont_1a_top" kv="0.1" ctrlrange="-6.28 6.28"/>
@@ -222,70 +222,70 @@
     </actuator> 
 
     <tendon>
-        <spatial name="inter1a1" width="0.005" rgba="0 1 0 1" stiffness="500" damping="15">
+        <spatial name="inter1a1" width="0.005" rgba="0 1 0 1" stiffness="3000" damping="25">
             <site site="siteM1a1"/>
             <site site="siteM1b1"/>
         </spatial>
-        <spatial name="inter1a2" width="0.005" rgba="0 1 0 1" stiffness="500" damping="15">
+        <spatial name="inter1a2" width="0.005" rgba="0 1 0 1" stiffness="3000" damping="25">
             <site site="siteM1a2"/>
             <site site="siteM1b2"/>
         </spatial>
-        <spatial name="inter1b1" width="0.005" rgba="0 1 0 1" stiffness="500" damping="15">
+        <spatial name="inter1b1" width="0.005" rgba="0 1 0 1" stiffness="3000" damping="25">
             <site site="siteM1b3"/>
             <site site="siteM1c1"/>
         </spatial>
-            <spatial name="inter1b2" width="0.005" rgba="0 1 0 1" stiffness="500" damping="15">
+            <spatial name="inter1b2" width="0.005" rgba="0 1 0 1" stiffness="3000" damping="25">
             <site site="siteM1b4"/>
             <site site="siteM1c2"/>
         </spatial>
 
-        <spatial name="inter2a1" width="0.005" rgba="1 1 0 1" stiffness="500" damping="15">
+        <spatial name="inter2a1" width="0.005" rgba="1 1 0 1" stiffness="3000" damping="25">
             <site site="siteM2a1"/>
             <site site="siteM2b1"/>
         </spatial>
-        <spatial name="inter2a2" width="0.005" rgba="1 1 0 1" stiffness="500" damping="15">
+        <spatial name="inter2a2" width="0.005" rgba="1 1 0 1" stiffness="3000" damping="25">
             <site site="siteM2a2"/>
             <site site="siteM2b2"/>
         </spatial>
-        <spatial name="inter2b1" width="0.005" rgba="1 1 0 1" stiffness="500" damping="15">
+        <spatial name="inter2b1" width="0.005" rgba="1 1 0 1" stiffness="3000" damping="25">
             <site site="siteM2b3"/>
             <site site="siteM2c1"/>
         </spatial>
-        <spatial name="inter2b2" width="0.005" rgba="1 1 0 1" stiffness="500" damping="15">
+        <spatial name="inter2b2" width="0.005" rgba="1 1 0 1" stiffness="3000" damping="25">
             <site site="siteM2b4"/>
             <site site="siteM2c2"/>
         </spatial>
 
-        <spatial name="inter3a1" width="0.005" rgba="0 1 1 1" stiffness="500" damping="15">
+        <spatial name="inter3a1" width="0.005" rgba="0 1 1 1" stiffness="3000" damping="25">
             <site site="siteM3a1"/>
             <site site="siteM3b1"/>
         </spatial>
-        <spatial name="inter3a2" width="0.005" rgba="0 1 1 1" stiffness="500" damping="15">
+        <spatial name="inter3a2" width="0.005" rgba="0 1 1 1" stiffness="3000" damping="25">
             <site site="siteM3a2"/>
             <site site="siteM3b2"/>
         </spatial>
-        <spatial name="inter3b1" width="0.005" rgba="0 1 1 1" stiffness="500" damping="15">
+        <spatial name="inter3b1" width="0.005" rgba="0 1 1 1" stiffness="3000" damping="25">
             <site site="siteM3b3"/>
             <site site="siteM3c1"/>
         </spatial>
-        <spatial name="inter3b2" width="0.005" rgba="0 1 1 1" stiffness="500" damping="15">
+        <spatial name="inter3b2" width="0.005" rgba="0 1 1 1" stiffness="3000" damping="25">
             <site site="siteM3b4"/>
             <site site="siteM3c2"/>
         </spatial>
 
-        <spatial name="inter4a1" width="0.005" rgba="0 1 0.5 1" stiffness="500" damping="15">
+        <spatial name="inter4a1" width="0.005" rgba="0 1 0.5 1" stiffness="3000" damping="25">
             <site site="siteM4a1"/>
             <site site="siteM4b1"/>
         </spatial>
-        <spatial name="inter4a2" width="0.005" rgba="0 1 0.5 1" stiffness="500" damping="15">
+        <spatial name="inter4a2" width="0.005" rgba="0 1 0.5 1" stiffness="3000" damping="25">
             <site site="siteM4a2"/>
             <site site="siteM4b2"/>
         </spatial>
-        <spatial name="inter4b1" width="0.005" rgba="0 1 0.5 1" stiffness="500" damping="15">
+        <spatial name="inter4b1" width="0.005" rgba="0 1 0.5 1" stiffness="3000" damping="25">
             <site site="siteM4b3"/>
             <site site="siteM4c1"/>
         </spatial>
-        <spatial name="inter4b2" width="0.005" rgba="0 1 0.5 1" stiffness="500" damping="15">
+        <spatial name="inter4b2" width="0.005" rgba="0 1 0.5 1" stiffness="3000" damping="25">
             <site site="siteM4b4"/>
             <site site="siteM4c2"/>
         </spatial>
