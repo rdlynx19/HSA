@@ -13,15 +13,15 @@ def main():
     sim.enable_actuator_group(1)
 
     try:
-        # sim.position_control_crawl(position=2.14, lock=True, plot=True)
+        sim.position_control_crawl(position=2.14, lock=True, plot=True)
         # sim.position_control_bend_left(position=2.8, duration=2.5, plot=True)
         # sim.position_control_contraction(duration=2.5, plot=True)
         # sim.position_control_bend_right(position=2.8, duration=2.5, plot=True)
         # sim.position_control_contraction(duration=2.5, plot=True)
-        sim.position_control_twist1(position=2.84, duration=2.5, plot=True)
-        sim.position_control_contraction(duration=2.5, plot=True)
-        sim.position_control_twist2(position=2.84, duration=2.5, plot=True)
-        sim.position_control_contraction(duration=2.5, plot=True)
+        # sim.position_control_twist1(position=2.84, duration=2.5, plot=True)
+        # sim.position_control_contraction(duration=2.5, plot=True)
+        # sim.position_control_twist2(position=2.84, duration=2.5, plot=True)
+        # sim.position_control_contraction(duration=2.5, plot=True)
     except KeyboardInterrupt:
         print("Simulation interrupted by user.")
     finally:

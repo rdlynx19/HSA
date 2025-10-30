@@ -535,7 +535,8 @@ class MuJoCoControlInterface:
     @require_state(RobotState.IDLE)    
     def position_control_twist1(self, 
                                 actuator_names: list[str] = 
-                                ["spring2c_motor", "spring2a_motor","spring4c_motor", "spring4a_motor"],
+                                ["spring2c_motor", "spring4c_motor","spring2a_motor", "spring4a_motor",
+                                 "spring1c_motor", "spring3c_motor","spring1a_motor", "spring3a_motor"],
                                 duration: float = 0.5,
                                 position: float = 2.84,
                                 plot: bool = False) -> None:
@@ -561,7 +562,7 @@ class MuJoCoControlInterface:
             self.sync_viewer()
 
             start_ctrl = np.zeros(len(actuator_ids))
-            target_ctrl = np.array([-position if i % 2 == 0 else 0.0 for i in range(len(actuator_ids))])
+            target_ctrl = np.array([-position, -position, 0.0, 0.0, 0.0, 0.0, 0.0 , 0.0])
 
             # Generate interpolated trajectory
             trajectory = self.interpolate_values(start_ctrl, target_ctrl, duration, self.dt, "linear")
@@ -578,10 +579,10 @@ class MuJoCoControlInterface:
                 distance = self.euclidean_distance("block_a", "block_b")
                 self.distances.append((self.data.time, distance))
             
-            # while self.viewer.is_running():
-            #     self.step_simulation()
-            #     self.sync_viewer()
-            #     time.sleep(self.dt)
+            while self.viewer.is_running():
+                self.step_simulation()
+                self.sync_viewer()
+                time.sleep(self.dt)
 
         except Exception as e:
             print(f"Unknown error: {e}")

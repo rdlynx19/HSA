@@ -39,6 +39,8 @@
                     <inertial pos="0.025 0 0" mass="0.1" diaginertia="0.0001 0.000225 0.000225"/>
                     <geom name="disc1b_con" type="cylinder" fromto="0 0 0 0.02 0 0" size="0.17"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
                     <joint name="disc1b_hinge" type="hinge" axis="1 0 0"/>
+                    <joint name="disc1b_slidez" type="slide" axis="0 0 1"/>
+                    <joint name="disc1b_slidey" type="slide" axis="0 1 0"/>
                     <site name="siteM1b1" pos="0 -0.165 -0.015"/>
                     <site name="siteM1b2" pos="0 0.165 0.015"/>
 
@@ -74,6 +76,8 @@
                     <inertial pos="0.025 0 0" mass="0.1" diaginertia="0.0001 0.000225 0.000225"/> 
                     <geom name="disc3b_con" type="cylinder" fromto="0 0 0 0.02 0 0" size="0.17"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
                     <joint name="disc3b_hinge" type="hinge" axis="1 0 0"/>
+                    <joint name="disc3b_slidez" type="slide" axis="0 0 1"/>
+                    <joint name="disc3b_slidey" type="slide" axis="0 1 0"/>
                     <site name="siteM3b1" pos="0.0 -0.165 -0.015"/>
                     <site name="siteM3b2" pos="0.0 0.165 0.015"/>
                     
@@ -133,6 +137,8 @@
                     <inertial pos="-0.025 0 0" mass="0.1" diaginertia="0.0001 0.000225 0.000225"/>
                     <geom name="disc2b_con" type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.17"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
                     <joint name="disc2b_hinge" type="hinge" axis="1 0 0"/>
+                    <joint name="disc2b_slidez" type="slide" axis="0 0 1"/>
+                    <joint name="disc2b_slidey" type="slide" axis="0 1 0"/>
                     <site name="siteM2b1" pos="0 -0.165 -0.015"/>
                     <site name="siteM2b2" pos="0 0.165 0.015"/> 
 
@@ -157,6 +163,9 @@
                     <inertial pos="-0.025 0 0" mass="0.1" diaginertia="0.0001 0.000225 0.000225"/>
                     <geom name="disc4b_con" type="cylinder" fromto="0 0 0 -0.02 0 0" size="0.17"  rgba="1 0 0 0.1" contype="0" conaffinity="0"/>
                     <joint name="disc4b_hinge" type="hinge" axis="1 0 0"/>
+                    <joint name="disc4b_slidez" type="slide" axis="0 0 1"/>
+                    <joint name="disc4b_slidey" type="slide" axis="0 1 0"/>
+
                     <site name="siteM4b1" pos="0 -0.165 -0.015"/>
                     <site name="siteM4b2" pos="0 0.165 0.015"/>
 
