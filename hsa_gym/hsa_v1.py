@@ -1,0 +1,122 @@
+import numpy as np
+
+from gymnasium import utils
+from gymnasium.envs.mujoco import MujocoEnv
+from gymnasium.spaces import Box
+
+class HSAEnv(MujocoEnv, utils.EzPickle):
+
+    metadata = {"render_modes": ["human", "rgb_array"]}
+
+    def __init__(self, 
+                 xml_file: str = "hsaModel.xml",
+                 frame_skip: int = 4,
+                 default_camera_config: dict[str, float | int] = {},
+                 forward_reward_weight: float = 1.0,
+                 ctrl_cost_weight: float = 1e-4,
+                 randomize_goal: bool = False,
+                 **kwargs):
+        
+        utils.EzPickle.__init__(self,
+                                xml_file,
+                                frame_skip,
+                                default_camera_config,
+                                forward_reward_weight,
+                                ctrl_cost_weight,
+                                **kwargs)
+        
+        self._forward_reward_weight = forward_reward_weight
+        self._ctrl_cost_weight = ctrl_cost_weight
+        self._randomize_goal = randomize_goal
+        # Goal bounds in the XY plane
+        self.goal_bounds = np.array([[-3.0, 3.0], [-3.0, 3.0]])
+        # Initializing goal position
+        self.goal = np.zeros(2)
+
+        MujocoEnv.__init__(self,
+                           xml_file,
+                           frame_skip,
+                           observation_space=None,
+                           default_camera_config=default_camera_config,
+                           **kwargs)
+        
+        self.metadata = {
+            "render_modes": ["human", "rgb_array"],
+            "render_fps": int(np.round(1.0 / self.dt))
+        }
+
+        # Observation Size
+        observation_size = (
+            self.data.qpos.size 
+            + self.data.qvel.size 
+            + 1 # for distance from goal position
+        )
+
+        # Observation Space
+        self.observation_space = Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=(observation_size,),
+            dtype=np.float64
+        )
+
+        # Observation Structure
+        self.observation_structure = {
+            "qpos": self.data.qpos.size,
+            "qvel": self.data.qvel.size,
+            "goal_distance": 1
+        }
+
+    # Control cost to penalize large actions
+    def control_cost(self, action: np.ndarray) -> float:
+        control_cost = self._ctrl_cost_weight * np.sum(np.square(action))
+        return control_cost
+
+    def _get_reward(self, action: np.ndarray) -> float:
+        # Compute current distance to goal
+        cur_dist = self._get_distance_to_goal() 
+        
+        # Reward is based on reduction in distance to goal
+        progress_reward = self._forward_reward_weight * (self.prev_dist - cur_dist)
+        
+
+    def reset_model(self) -> np.ndarray:
+        self.set_state(self.init_qpos, self.init_qvel)
+        
+        # Assign a new goal at reset
+        self.goal = self._sample_goal()
+        self.prev_dist = self._get_distance_to_goal()
+
+        observation = self._get_obs()
+        return observation
+    
+    def _get_distance_to_goal(self) -> float:
+        robot_COM = self._compute_COM()
+        goal_distance = np.linalg.norm(robot_COM - self.goal).astype(np.float64)
+        return goal_distance
+
+    def _get_obs(self):
+        position = self.data.qpos.flatten()
+        velocity = self.data.qvel.flatten()
+
+        # Distance from goal position
+        goal_distance = self._get_distance_to_goal()
+
+        observation = np.concatenate([position, velocity, [goal_distance]]).ravel()
+        return observation
+
+
+    def _sample_goal(self) -> np.ndarray:
+        if self._randomize_goal:
+            low, high = self.goal_bounds[:, 0], self.goal_bounds[:, 1]
+            return np.random.uniform(low=low, high=high)
+        else:
+            return np.array([2.0, 2.0])
+
+    def _compute_COM(self) -> np.ndarray:
+        blocka_pos = self.data.body("block_a").xpos.copy()
+        blockb_pos = self.data.body("block_b").xpos.copy()
+
+        # Center of Mass position
+        return 0.5 * (blocka_pos + blockb_pos)[:2]
+    
