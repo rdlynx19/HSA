@@ -100,143 +100,157 @@ class CustomMujocoEnv(gym.Env):
             visual_options,
         )
 
-        def _set_action_space(self):
-            """
-            Set the action space of the environment.
-            """
-            bounds = self.model.actuator_ctrlrange.copy().astype(np.float32)
-            low, high = bounds.T
-            # Action space for actuators
-            continous_space = spaces.Box(low=low, high=high, dtype=np.float32)
-            # Action space for disc unlocking/locking
-            discrete_space = spaces.MultiBinary(4)
+    def _set_action_space(self):
+        """
+        Set the action space of the environment.
+        """
+        bounds = self.model.actuator_ctrlrange.copy().astype(np.float32)
+        low, high = bounds.T
+        # Action space for actuators
+        continous_space = spaces.Box(low=low, high=high, dtype=np.float32)
+        # Action space for disc unlocking/locking
+        discrete_space = spaces.MultiBinary(4)
 
-            self.action_space = spaces.Dict({
-                "motors": continous_space,
-                "constraints": discrete_space
-            })
-            return self.action_space
+        self.action_space = spaces.Dict({
+            "motors": continous_space,
+            "constraints": discrete_space
+        })
+        return self.action_space
+    
+    def _initialize_simulation(self) -> tuple[mujoco.MjModel, mujoco.MjData]:
+        """
+        Initialize MuJoCo simulation data structures `mjModel` and `mjData`. 
+
+        :return: A tuple containing the MuJoCo model and data
+        """
+        model = mujoco.MjModel.from_xml_path(self.fullpath)
+        model.vis.global_.offwidth = self.width
+        model.vis.global_.offheight = self.height
+        data = mujoco.MjData(model)
+        return model, data
+
+    def set_state(self, qpos: NDArray[np.float64], qvel: NDArray[np.float64]):
+        """
+        Set the joints position qpos and velocity qvel of the model.
+
+        :param qpos: Joint position states
+        :param qvel: Joint velocity states
+        """
+        assert qpos.shape == (self.model.nq,) and qvel.shape == (self.model.nv,)
+        self.data.qpos[:] = np.copy(qpos)
+        self.data.qvel[:] = np.copy(qvel)
+        if self.model.na == 0:
+            self.data.act[:] = None
+        mujoco.mj_forward(self.model, self.data)
+    
+    def _step_mujoco_simulation(self, ctrl: NDArray[np.float64], constraint: NDArray[np.int8], n_frames: int) -> None:
+        """
+        Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs and constraints.
+
+        :param ctrl: Control inputs for the actuators
+        :param constraint: Constraint activations for the discs
+        :param n_frames: Number of simulation frames to step
+        """
+        self.data.ctrl[:] = ctrl
+        self.data.eq_active[:] = constraint
         
-        def _initialize_simulation(self) -> tuple[mujoco.MjModel, mujoco.MjData]:
-            """
-            Initialize MuJoCo simulation data structures `mjModel` and `mjData`. 
+        mujoco.mj_step(self.model, self.data, nstep=n_frames)
 
-            :return: A tuple containing the MuJoCo model and data
-            """
-            model = mujoco.MjModel.from_xml_path(self.fullpath)
-            model.vis.global_.offwidth = self.width
-            model.vis.global_.offheight = self.height
-            data = mujoco.MjData(model)
-            return model, data
+        mujoco.mj_rnePostConstraint(self.model, self.data)
         
-        def _step_mujoco_simulation(self, ctrl: NDArray[np.float64], constraint: NDArray[np.int8], n_frames: int) -> None:
-            """
-            Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs and constraints.
+    def render(self) -> MujocoRenderer.render:
+        """
+        Render a frame from the MuJoCo simulation as specified by the render mode.
 
-            :param ctrl: Control inputs for the actuators
-            :param constraint: Constraint activations for the discs
-            :param n_frames: Number of simulation frames to step
-            """
-            self.data.ctrl[:] = ctrl
-            self.data.eq_active[:] = constraint
-            
-            mujoco.mj_step(self.model, self.data, nstep=n_frames)
+        :return: Rendered frame
+        """
+        return self.mujoco_renderer.render(self.render_mode)
 
-            mujoco.mj_rnePostConstraint(self.model, self.data)
-            
-        def render(self) -> MujocoRenderer.render:
-            """
-            Render a frame from the MuJoCo simulation as specified by the render mode.
+    def close(self) -> None:
+        """
+        Close rendering contexts processes.
+        """
+        if self.mujoco_renderer is not None:
+            self.mujoco_renderer.close()
+    
+    def get_body_com(self, body_name: str) -> NDArray[np.float64]:
+        """
+        Get the cartesian position of a body frame.
 
-            :return: Rendered frame
-            """
-            return self.mujoco_renderer.render(self.render_mode)
+        :param body_name: Name of the body
+        :return: Cartesian position of the body's COM
+        """
+        return self.data.body(body_name).xpos
+    
+    def reset(self, 
+                *, 
+                seed: int | None = None,
+                options: dict | None = None) -> tuple[NDArray[np.float64], dict]:
+        """
+        Reset the environment to an initial state and return an initial observation.
 
-        def close(self) -> None:
-            """
-            Close rendering contexts processes.
-            """
-            if self.mujoco_renderer is not None:
-                self.mujoco_renderer.close()
-        
-        def get_body_com(self, body_name: str) -> NDArray[np.float64]:
-            """
-            Get the cartesian position of a body frame.
+        :param seed: Optional seed for the environment's random number generator
+        :param options: Optional dictionary of additional options for resetting the environment
+        :return: A tuple containing the initial observation and an info dictionary
+        """
+        super().reset(seed=seed)
 
-            :param body_name: Name of the body
-            :return: Cartesian position of the body's COM
-            """
-            return self.data.body(body_name).xpos
-        
-        def reset(self, 
-                  *, 
-                  seed: int | None = None,
-                  options: dict | None = None) -> tuple[NDArray[np.float64], dict]:
-            """
-            Reset the environment to an initial state and return an initial observation.
+        mujoco.mj_resetData(self.model, self.data)
 
-            :param seed: Optional seed for the environment's random number generator
-            :param options: Optional dictionary of additional options for resetting the environment
-            :return: A tuple containing the initial observation and an info dictionary
-            """
-            super().reset(seed=seed)
+        ob = self.reset_model()
+        info = self._get_reset_info()
 
-            mujoco.mj_resetData(self.model, self.data)
+        if self.render_mode == "human":
+            self.render()
+        return ob, info
 
-            ob = self.reset_model()
-            info = self._get_reset_info()
+    @property
+    def dt(self) -> float:
+        """
+        Return the time step of the simulation.
 
-            if self.render_mode == "human":
-                self.render()
-            return ob, info
+        :return: Time step of the simulation
+        """
+        return self.model.opt.timestep * self.frame_skip
 
-        @property
-        def dt(self) -> float:
-            """
-            Return the time step of the simulation.
+    def do_simulation(self, ctrl: NDArray[np.float64], constraint: NDArray[np.int8], n_frames: int) -> None:
+        """
+        Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs.
 
-            :return: Time step of the simulation
-            """
-            return self.model.opt.timestep * self.frame_skip
+        :param ctrl: Control inputs for the actuators
+        :param constraint: Constraint activations for the discs
+        :param n_frames: Number of simulation frames to step
+        """
+        if np.array(ctrl).shape != (self.model.nu,):
+            raise ValueError(
+                f"Action dimension mismatch. Expected {(self.model.nu,)}, found {np.array(ctrl).shape}")
+        self._step_mujoco_simulation(ctrl, constraint, n_frames)
 
-        def do_simulation(self, ctrl: NDArray[np.float64], constraint: NDArray[np.int8], n_frames: int) -> None:
-            """
-            Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs.
+    def state_vector(self) -> NDArray[np.float64]:
+        """
+        Return the position and velocity joint states of the model. 
 
-            :param ctrl: Control inputs for the actuators
-            :param constraint: Constraint activations for the discs
-            :param n_frames: Number of simulation frames to step
-            """
-            if np.array(ctrl).shape != (self.model.nu,):
-                raise ValueError(
-                    f"Action dimension mismatch. Expected {(self.model.nu,)}, found {np.array(ctrl).shape}")
-            self._step_mujoco_simulation(ctrl, constraint, n_frames)
-
-        def state_vector(self) -> NDArray[np.float64]:
-            """
-            Return the position and velocity joint states of the model. 
-
-            :return: Concatenated position and velocity states
-            """
-            return np.concatenate([self.data.qpos.flat, self.data.qvel.flat])
-        
-        # methods to override:
-        def step(
-                self, 
-                action: NDArray[np.float64],
-            ) -> tuple[NDArray[np.float64], np.float64, bool, bool, dict[str, np.float64]]:
-            raise NotImplementedError
-        
-        def reset_model(self) -> NDArray[np.float64]:
-            """
-            Reset the robot degrees of freedom (qpos and qvel)
-            Implement this in each environment subclass
-            """
-            raise NotImplementedError
-        
-        def _get_reset_info(self) -> dict[str, np.float64]:
-            """
-            Function that generates the `info` that is return during a 
-            `reset()`
-            """
-            return {}
+        :return: Concatenated position and velocity states
+        """
+        return np.concatenate([self.data.qpos.flat, self.data.qvel.flat])
+    
+    # methods to override:
+    def step(
+            self, 
+            action: spaces.Dict[str, NDArray[np.float64]],
+        ) -> tuple[NDArray[np.float64], np.float64, bool, bool, dict[str, np.float64]]:
+        raise NotImplementedError
+    
+    def reset_model(self) -> NDArray[np.float64]:
+        """
+        Reset the robot degrees of freedom (qpos and qvel)
+        Implement this in each environment subclass
+        """
+        raise NotImplementedError
+    
+    def _get_reset_info(self) -> dict[str, np.float64]:
+        """
+        Function that generates the `info` that is return during a 
+        `reset()`
+        """
+        return {}
