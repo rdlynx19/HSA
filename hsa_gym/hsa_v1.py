@@ -78,7 +78,40 @@ class HSAEnv(MujocoEnv, utils.EzPickle):
         
         # Reward is based on reduction in distance to goal
         progress_reward = self._forward_reward_weight * (self.prev_dist - cur_dist)
-        
+
+        # Control cost penalty
+        ctrl_cost =  self.control_cost(action)
+        reward = progress_reward - ctrl_cost
+        reward_info = {
+            "reward_progress": progress_reward,
+            "reward_ctrl_cost": -ctrl_cost,
+        }
+
+        # Bonmus for reaching close to the goal
+        if cur_dist < 0.05:
+            reward += 1.0
+
+        # Update previous distance
+        self.prev_dist = cur_dist
+        return reward, reward_info
+
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict]:
+        prv_dist = self._get_distance_to_goal()
+        self.do_simulation(action, self.frame_skip)
+        observation = self._get_obs()
+        reward, reward_info = self._get_reward(action)
+        terminated = self._get_distance_to_goal() < 0.05
+        truncated = False
+        info = {
+            "prev_distance": prv_dist,
+            "cur_distance": self._get_distance_to_goal(),
+            **reward_info
+        }
+
+        if self.render_mode == "human":
+            self.render()
+        # truncation=False as the time limit is handled by the `TimeLimit` wrapper added during `make`
+        return observation, reward, terminated, truncated, info
 
     def reset_model(self) -> np.ndarray:
         self.set_state(self.init_qpos, self.init_qvel)
@@ -86,7 +119,6 @@ class HSAEnv(MujocoEnv, utils.EzPickle):
         # Assign a new goal at reset
         self.goal = self._sample_goal()
         self.prev_dist = self._get_distance_to_goal()
-
         observation = self._get_obs()
         return observation
     
