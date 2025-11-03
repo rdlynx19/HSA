@@ -375,7 +375,7 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unexpected error: {e}")
 
-    @require_state(RobotState.IDLE)
+    @require_state(RobotState.IDLE, RobotState.BENDING)
     def position_control_extension(self,
                                    actuator_names: list[str] = 
                                    ["spring1a_motor", "spring1c_motor",
@@ -396,7 +396,8 @@ class MuJoCoControlInterface:
         if self.viewer is None:
             self.start_simulation()
         try:
-            
+            self.modify_equality_constraints(disable=False, 
+                                            constraints=["disc1b", "disc2b", "disc3b", "disc4b"])
             self.step_simulation()
             self.sync_viewer()
             
@@ -408,7 +409,8 @@ class MuJoCoControlInterface:
             self.update_friction_side(side="block_a", mode="extension")
             self.update_friction_side(side="block_b", mode="extension")
 
-            start_ctrl = np.zeros(len(actuator_ids))
+            # start_ctrl = np.zeros(len(actuator_ids))
+            start_ctrl = np.copy(self.data.ctrl[actuator_ids])
             target_ctrl = np.array([position if i % 2 == 0 else -position for i in range(len(actuator_ids))])
 
             # Generate interpolated trajectory
@@ -451,7 +453,8 @@ class MuJoCoControlInterface:
         if self.viewer is None:
             self.start_simulation()
         try:
-
+            self.modify_equality_constraints(disable=False, 
+                                            constraints=["disc1b", "disc2b", "disc3b", "disc4b"])
             self.step_simulation()
             self.sync_viewer()
 
@@ -492,7 +495,7 @@ class MuJoCoControlInterface:
         except Exception as e:
             print(f"Unknown exception: {e}")
 
-    @require_state(RobotState.IDLE)
+    @require_state(RobotState.IDLE, RobotState.BENDING)
     def position_control_crawl(self,
                                actuator_names: list[str] = 
                                 ["spring1a_motor", "spring1c_motor",

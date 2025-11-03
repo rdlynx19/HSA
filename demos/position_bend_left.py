@@ -13,9 +13,10 @@ def main():
 
     try:
         sim.start_simulation()
-        sim.position_control_bend_left(position=2.9, duration=5)
-        sim.position_control_contraction(duration=5)
-        # sim.position_control_crawl(position=1.57)
+        sim.position_control_bend_left(position=2.9, duration=1.5)
+        # sim.position_control_extension(position=2.84, duration=5)
+        # sim.position_control_contraction(duration=5)
+        sim.position_control_crawl(position=2.14, lock=True, duration=0.75)
     except KeyboardInterrupt:
         print("Simulation interrupted by user.")
         sim.close_simulation()
