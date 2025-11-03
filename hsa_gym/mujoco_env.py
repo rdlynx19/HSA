@@ -113,7 +113,7 @@ class CustomMujocoEnv(gym.Env):
 
         self.action_space = spaces.Dict({
             "motors": continous_space,
-            "constraints": discrete_space
+            "locks": discrete_space
         })
         return self.action_space
     
@@ -143,7 +143,7 @@ class CustomMujocoEnv(gym.Env):
             self.data.act[:] = None
         mujoco.mj_forward(self.model, self.data)
     
-    def _step_mujoco_simulation(self, ctrl: NDArray[np.float64], constraint: NDArray[np.int8], n_frames: int) -> None:
+    def _step_mujoco_simulation(self, ctrl: NDArray[np.float64], lock: NDArray[np.int8], n_frames: int) -> None:
         """
         Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs and constraints.
 
@@ -152,13 +152,13 @@ class CustomMujocoEnv(gym.Env):
         :param n_frames: Number of simulation frames to step
         """
         self.data.ctrl[:] = ctrl
-        self.data.eq_active[:] = constraint
+        self.data.eq_active[:] = lock
         
         mujoco.mj_step(self.model, self.data, nstep=n_frames)
 
         mujoco.mj_rnePostConstraint(self.model, self.data)
         
-    def render(self) -> MujocoRenderer.render:
+    def render(self):
         """
         Render a frame from the MuJoCo simulation as specified by the render mode.
 
@@ -213,18 +213,21 @@ class CustomMujocoEnv(gym.Env):
         """
         return self.model.opt.timestep * self.frame_skip
 
-    def do_simulation(self, ctrl: NDArray[np.float64], constraint: NDArray[np.int8], n_frames: int) -> None:
+    def do_simulation(self, action: spaces.Dict[str, NDArray[np.float64]], n_frames: int) -> None:
         """
         Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs.
 
-        :param ctrl: Control inputs for the actuators
-        :param constraint: Constraint activations for the discs
-        :param n_frames: Number of simulation frames to step
+        :param action: Control inputs for the actuators
         """
+        ctrl = action["motors"]
+        lock = action["locks"]
         if np.array(ctrl).shape != (self.model.nu,):
             raise ValueError(
-                f"Action dimension mismatch. Expected {(self.model.nu,)}, found {np.array(ctrl).shape}")
-        self._step_mujoco_simulation(ctrl, constraint, n_frames)
+                f"Control dimension mismatch. Expected {(self.model.nu,)}, found {np.array(ctrl).shape}")
+        if np.array(lock).shape != (self.data.eq_active.shape):
+            raise ValueError(
+                f"Lock dimension mismatch. Expected {self.data.eq_active.shape}, found {np.array(lock).shape}")
+        self._step_mujoco_simulation(ctrl, lock, n_frames)
 
     def state_vector(self) -> NDArray[np.float64]:
         """

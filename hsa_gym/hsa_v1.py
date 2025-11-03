@@ -1,10 +1,11 @@
 import numpy as np
+from numpy.typing import NDArray
 
 from gymnasium import utils
-from gymnasium.envs.mujoco import MujocoEnv
-from gymnasium.spaces import Box
+from .mujoco_env import CustomMujocoEnv
+from gymnasium.spaces import Box, Dict
 
-class HSAEnv(MujocoEnv, utils.EzPickle):
+class HSAEnv(CustomMujocoEnv, utils.EzPickle):
 
     metadata = {"render_modes": ["human", "rgb_array"]}
 
@@ -33,7 +34,7 @@ class HSAEnv(MujocoEnv, utils.EzPickle):
         # Initializing goal position
         self.goal = np.zeros(2)
 
-        MujocoEnv.__init__(self,
+        CustomMujocoEnv.__init__(self,
                            xml_file,
                            frame_skip,
                            observation_space=None,
@@ -47,9 +48,9 @@ class HSAEnv(MujocoEnv, utils.EzPickle):
 
         # Observation Size
         observation_size = (
-            self.data.qpos.size 
-            + self.data.qvel.size 
-            + 1 # for distance from goal position
+            self.data.qpos.size
+            + self.data.qvel.size
+            + 1  # for distance from goal position
         )
 
         # Observation Space
@@ -66,13 +67,32 @@ class HSAEnv(MujocoEnv, utils.EzPickle):
             "qvel": self.data.qvel.size,
             "goal_distance": 1
         }
+  
 
     # Control cost to penalize large actions
-    def control_cost(self, action: np.ndarray) -> float:
-        control_cost = self._ctrl_cost_weight * np.sum(np.square(action))
+    def control_cost(self, action: Dict[str, NDArray[np.float64]]) -> float:
+        control_cost = self._ctrl_cost_weight * np.sum(np.square(action["motors"]))
         return control_cost
 
-    def _get_reward(self, action: np.ndarray) -> float:
+    def step(self, action: Dict[str, NDArray[np.float64]]) -> tuple[NDArray[np.float64], np.float64, bool, bool, dict[str, np.float64]]:
+        prv_dist = self._get_distance_to_goal()
+        self.do_simulation(action, self.frame_skip)
+        observation = self._get_obs()
+        reward, reward_info = self._get_reward(action)
+        terminated = self._get_distance_to_goal() < 0.05
+        truncated = False
+        info = {
+            "prev_distance": prv_dist,
+            "cur_distance": self._get_distance_to_goal(),
+            **reward_info
+        }
+
+        if self.render_mode == "human":
+            self.render()
+        # truncation=False as the time limit is handled by the `TimeLimit` wrapper added during `make`
+        return observation, reward, terminated, truncated, info
+
+    def _get_reward(self, action: Dict[str, NDArray[np.float64]]) -> tuple[float, dict[str, float]]:
         # Compute current distance to goal
         cur_dist = self._get_distance_to_goal() 
         
@@ -95,23 +115,15 @@ class HSAEnv(MujocoEnv, utils.EzPickle):
         self.prev_dist = cur_dist
         return reward, reward_info
 
-    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict]:
-        prv_dist = self._get_distance_to_goal()
-        self.do_simulation(action, self.frame_skip)
-        observation = self._get_obs()
-        reward, reward_info = self._get_reward(action)
-        terminated = self._get_distance_to_goal() < 0.05
-        truncated = False
-        info = {
-            "prev_distance": prv_dist,
-            "cur_distance": self._get_distance_to_goal(),
-            **reward_info
-        }
+    def _get_obs(self):
+        position = self.data.qpos.flatten()
+        velocity = self.data.qvel.flatten()
 
-        if self.render_mode == "human":
-            self.render()
-        # truncation=False as the time limit is handled by the `TimeLimit` wrapper added during `make`
-        return observation, reward, terminated, truncated, info
+        # Distance from goal position
+        goal_distance = self._get_distance_to_goal()
+
+        observation = np.concatenate([position, velocity, [goal_distance]]).ravel()
+        return observation
 
     def reset_model(self) -> np.ndarray:
         self.set_state(self.init_qpos, self.init_qvel)
@@ -127,17 +139,6 @@ class HSAEnv(MujocoEnv, utils.EzPickle):
         goal_distance = np.linalg.norm(robot_COM - self.goal).astype(np.float64)
         return goal_distance
 
-    def _get_obs(self):
-        position = self.data.qpos.flatten()
-        velocity = self.data.qvel.flatten()
-
-        # Distance from goal position
-        goal_distance = self._get_distance_to_goal()
-
-        observation = np.concatenate([position, velocity, [goal_distance]]).ravel()
-        return observation
-
-
     def _sample_goal(self) -> np.ndarray:
         if self._randomize_goal:
             low, high = self.goal_bounds[:, 0], self.goal_bounds[:, 1]
@@ -146,9 +147,9 @@ class HSAEnv(MujocoEnv, utils.EzPickle):
             return np.array([2.0, 2.0])
 
     def _compute_COM(self) -> np.ndarray:
-        blocka_pos = self.data.body("block_a").xpos.copy()
-        blockb_pos = self.data.body("block_b").xpos.copy()
+        blocka_pos = self.get_body_com("block_a").copy()
+        blockb_pos = self.get_body_com("block_b").copy()
 
         # Center of Mass position
-        return 0.5 * (blocka_pos + blockb_pos)[:2]
+        return 0.5 * (blocka_pos[:2] + blockb_pos[:2])
     
