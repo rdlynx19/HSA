@@ -6,7 +6,11 @@ from .mujoco_env import CustomMujocoEnv
 from gymnasium.spaces import Box, Space
 
 class HSAEnv(CustomMujocoEnv, utils.EzPickle):
-
+    """
+    HSA Environment Class for MuJoCo-based simulation.
+    In this environment, a robot must learn to move towards a goal position
+    in the XY plane by coordinating its two blocks.
+    """
     metadata = {"render_modes": ["human", "rgb_array"]}
 
     def __init__(self, 
@@ -73,10 +77,22 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
     def control_cost(self, 
                      action: dict[str, NDArray[np.float32 | np.uint8]]
                      ) -> float:
+        """
+        Compute the control cost based on the action taken.
+
+        :param action: Action dictionary containing motor commands
+        :return: Control cost as a float
+        """
         control_cost = self._ctrl_cost_weight * np.sum(np.square(action["motors"]))
         return control_cost
 
     def step(self, action: dict[str, NDArray[np.float32 | np.uint8]]) -> tuple[NDArray[np.float64], np.float64, bool, bool, dict[str, np.float64]]:
+        """
+        Take a step in the environment using the provided action.
+
+        :param action: Action dictionary containing motor commands and disc lock/unlock signals
+        :return: A tuple containing the observation, reward, termination status, truncation status, and info dictionary
+        """
         prv_dist = self._get_distance_to_goal()
         self.do_simulation(action, self.frame_skip)
         observation = self._get_obs()
@@ -95,6 +111,12 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         return observation, reward, terminated, truncated, info
 
     def _get_reward(self, action: dict[str, NDArray[np.float32 | np.uint8]]) -> tuple[float, dict[str, float]]:
+        """
+        Compute the reward for the current step.
+
+        :param action: Action dictionary containing motor commands and disc lock/unlock signals
+        :return: A tuple containing the reward and a dictionary of reward components
+        """
         # Compute current distance to goal
         cur_dist = self._get_distance_to_goal() 
         
@@ -118,6 +140,11 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         return reward, reward_info
 
     def _get_obs(self) -> NDArray[np.float64]:
+        """
+        Get the current observation from the environment.
+
+        :return: Observation as a numpy array
+        """
         position = self.data.qpos.flatten()
         velocity = self.data.qvel.flatten()
 
@@ -128,6 +155,11 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         return observation
 
     def reset_model(self) -> NDArray[np.float64]:
+        """
+        Reset the model to its initial state.
+
+        :return: Initial observation after reset
+        """
         self.set_state(self.init_qpos, self.init_qvel)
         
         # Assign a new goal at reset
@@ -137,11 +169,21 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         return observation
     
     def _get_distance_to_goal(self) -> float:
+        """
+        Compute the distance from the robot's center of mass to the goal position.
+
+        :return: Distance to the goal as a float
+        """
         robot_COM = self._compute_COM()
         goal_distance = np.linalg.norm(robot_COM - self.goal).astype(np.float64)
         return goal_distance
 
     def _sample_goal(self) -> NDArray[np.float64]:
+        """
+        Sample a new goal position.
+
+        :return: New goal position as a numpy array
+        """
         if self._randomize_goal:
             low, high = self.goal_bounds[:, 0], self.goal_bounds[:, 1]
             return np.random.uniform(low=low, high=high)
@@ -149,6 +191,12 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
             return np.array([2.0, 2.0])
 
     def _compute_COM(self) -> NDArray[np.float64]:
+        """
+        Compute the center of mass (COM) of the robot in the XY plane.
+
+        :return: Center of mass position as a numpy array
+        """
+
         blocka_pos = self.get_body_com("block_a").copy()
         blockb_pos = self.get_body_com("block_b").copy()
 

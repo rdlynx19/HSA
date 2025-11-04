@@ -181,7 +181,6 @@ class CustomMujocoEnv(gym.Env):
         Get the cartesian position of a body frame.
 
         :param body_name: Name of the body
-
         :return: Cartesian position of the body's COM
         """
         return self.data.body(body_name).xpos
@@ -194,7 +193,6 @@ class CustomMujocoEnv(gym.Env):
 
         :param seed: Optional seed for the environment's random number generator
         :param options: Optional dictionary of additional options for resetting the environment
-
         :return: A tuple containing the initial observation and an info dictionary
         """
         super().reset(seed=seed)
