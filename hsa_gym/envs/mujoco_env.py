@@ -5,7 +5,7 @@ from numpy.typing import NDArray
 
 import gymnasium as gym
 from gymnasium import error, spaces
-from gymnasium.spaces import Space
+from gymnasium.spaces import Space, Dict
 
 try:
     import mujoco
@@ -213,7 +213,7 @@ class CustomMujocoEnv(gym.Env):
         """
         return self.model.opt.timestep * self.frame_skip
 
-    def do_simulation(self, action: spaces.Dict[str, NDArray[np.float64]], n_frames: int) -> None:
+    def do_simulation(self, action, n_frames: int) -> None:
         """
         Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs.
 
@@ -240,7 +240,7 @@ class CustomMujocoEnv(gym.Env):
     # methods to override:
     def step(
             self, 
-            action: spaces.Dict[str, NDArray[np.float64]],
+            action,
         ) -> tuple[NDArray[np.float64], np.float64, bool, bool, dict[str, np.float64]]:
         raise NotImplementedError
     

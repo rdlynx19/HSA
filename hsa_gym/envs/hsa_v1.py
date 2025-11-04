@@ -3,7 +3,7 @@ from numpy.typing import NDArray
 
 from gymnasium import utils
 from .mujoco_env import CustomMujocoEnv
-from gymnasium.spaces import Box, Dict
+from gymnasium.spaces import Box, Space
 
 class HSAEnv(CustomMujocoEnv, utils.EzPickle):
 
@@ -70,11 +70,11 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
   
 
     # Control cost to penalize large actions
-    def control_cost(self, action: Dict[str, NDArray[np.float64]]) -> float:
+    def control_cost(self, action) -> float:
         control_cost = self._ctrl_cost_weight * np.sum(np.square(action["motors"]))
         return control_cost
 
-    def step(self, action: Dict[str, NDArray[np.float64]]) -> tuple[NDArray[np.float64], np.float64, bool, bool, dict[str, np.float64]]:
+    def step(self, action) -> tuple[NDArray[np.float64], np.float64, bool, bool, dict[str, np.float64]]:
         prv_dist = self._get_distance_to_goal()
         self.do_simulation(action, self.frame_skip)
         observation = self._get_obs()
@@ -92,7 +92,7 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         # truncation=False as the time limit is handled by the `TimeLimit` wrapper added during `make`
         return observation, reward, terminated, truncated, info
 
-    def _get_reward(self, action: Dict[str, NDArray[np.float64]]) -> tuple[float, dict[str, float]]:
+    def _get_reward(self, action) -> tuple[float, dict[str, float]]:
         # Compute current distance to goal
         cur_dist = self._get_distance_to_goal() 
         
