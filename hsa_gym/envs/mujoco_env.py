@@ -5,7 +5,7 @@ from numpy.typing import NDArray
 
 import gymnasium as gym
 from gymnasium import error, spaces
-from gymnasium.spaces import Space, Dict
+from gymnasium.spaces import Space
 
 try:
     import mujoco
@@ -143,7 +143,10 @@ class CustomMujocoEnv(gym.Env):
             self.data.act[:] = None
         mujoco.mj_forward(self.model, self.data)
     
-    def _step_mujoco_simulation(self, ctrl: NDArray[np.float64], lock: NDArray[np.int8], n_frames: int) -> None:
+    def _step_mujoco_simulation(self, 
+                                ctrl: NDArray[np.float32], 
+                                lock: NDArray[np.int8], 
+                                n_frames: int) -> None:
         """
         Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs and constraints.
 
@@ -158,7 +161,7 @@ class CustomMujocoEnv(gym.Env):
 
         mujoco.mj_rnePostConstraint(self.model, self.data)
         
-    def render(self):
+    def render(self) -> NDArray[np.uint8] | None:
         """
         Render a frame from the MuJoCo simulation as specified by the render mode.
 
@@ -178,19 +181,20 @@ class CustomMujocoEnv(gym.Env):
         Get the cartesian position of a body frame.
 
         :param body_name: Name of the body
+
         :return: Cartesian position of the body's COM
         """
         return self.data.body(body_name).xpos
-    
-    def reset(self, 
-                *, 
-                seed: int | None = None,
-                options: dict | None = None) -> tuple[NDArray[np.float64], dict]:
+
+    def reset(self, *, 
+              seed: int | None = None, 
+              options: dict | None = None) -> tuple[NDArray[np.float64], dict]:
         """
         Reset the environment to an initial state and return an initial observation.
 
         :param seed: Optional seed for the environment's random number generator
         :param options: Optional dictionary of additional options for resetting the environment
+
         :return: A tuple containing the initial observation and an info dictionary
         """
         super().reset(seed=seed)
@@ -213,7 +217,8 @@ class CustomMujocoEnv(gym.Env):
         """
         return self.model.opt.timestep * self.frame_skip
 
-    def do_simulation(self, action, n_frames: int) -> None:
+    def do_simulation(self, 
+                      action: dict[str, NDArray[np.float32 | np.uint8]], n_frames: int) -> None:
         """
         Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs.
 
@@ -224,6 +229,7 @@ class CustomMujocoEnv(gym.Env):
         if np.array(ctrl).shape != (self.model.nu,):
             raise ValueError(
                 f"Control dimension mismatch. Expected {(self.model.nu,)}, found {np.array(ctrl).shape}")
+        
         if np.array(lock).shape != (self.data.eq_active.shape):
             raise ValueError(
                 f"Lock dimension mismatch. Expected {self.data.eq_active.shape}, found {np.array(lock).shape}")
@@ -239,9 +245,10 @@ class CustomMujocoEnv(gym.Env):
     
     # methods to override:
     def step(
-            self, 
-            action,
-        ) -> tuple[NDArray[np.float64], np.float64, bool, bool, dict[str, np.float64]]:
+            self,
+            action: dict[str, NDArray[np.float32 | np.uint8]]
+            ) -> tuple[NDArray[np.float64], np.float64, bool, bool,
+                       dict[str, np.float64]]:
         raise NotImplementedError
     
     def reset_model(self) -> NDArray[np.float64]:
