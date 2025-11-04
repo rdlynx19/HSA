@@ -21,7 +21,7 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
                  ctrl_cost_weight: float = 1e-4,
                  randomize_goal: bool = False,
                  actuator_groups: list[int] = [1],
-                 use_locks: bool = False,
+                 use_locks: bool = True,
                  **kwargs):
         
         utils.EzPickle.__init__(self,
@@ -41,13 +41,15 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         self.goal = np.zeros(2)
 
         self.actuator_groups = actuator_groups
+        self.use_locks = use_locks
 
         CustomMujocoEnv.__init__(self,
                            xml_file,
                            frame_skip,
                            observation_space=None,
                            default_camera_config=default_camera_config,
-                           actuator_groups=actuator_groups,
+                           actuator_groups=self.actuator_groups,
+                           use_locks=self.use_locks,
                            **kwargs)
         
         self.metadata = {
@@ -103,7 +105,7 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         self.do_simulation(action, self.frame_skip, self.actuator_groups)
         observation = self._get_obs()
         reward, reward_info = self._get_reward(action)
-        terminated = (self._get_distance_to_goal() < 0.05) or (not np.isfinite(observation).all() or np.isnan(observation).any())
+        terminated = (self._get_distance_to_goal() < 0.05) or (not np.isfinite(observation).all() or np.isnan(observation).any() or self.get_body_com("block_a")[2] > 0.4 or self.get_body_com("block_b")[2] > 0.4)
         truncated = False
         info = {
             "prev_distance": prv_dist,

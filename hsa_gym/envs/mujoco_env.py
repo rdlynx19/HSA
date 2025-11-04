@@ -84,7 +84,7 @@ class CustomMujocoEnv(gym.Env):
             ), f'Expected value: {int(np.round(1.0 / self.dt))}, Actual value: {self.metadata["render_fps"]}'
         if observation_space is not None:
             self.observation_space = observation_space
-        self._set_action_space(active_groups=actuator_groups)
+        self._set_action_space(active_groups=actuator_groups, use_locks=use_locks)
 
         self.render_mode = render_mode
         self.camera_name = camera_name
@@ -264,13 +264,7 @@ class CustomMujocoEnv(gym.Env):
             lock = action["locks"]
         else:
             lock = None
-        # if np.array(ctrl).shape != (self.model.nu,):
-        #     raise ValueError(
-        #         f"Control dimension mismatch. Expected {(self.model.nu,)}, found {np.array(ctrl).shape}")
-        
-        # if np.array(lock).shape != (self.data.eq_active.shape):
-        #     raise ValueError(
-        #         f"Lock dimension mismatch. Expected {self.data.eq_active.shape}, found {np.array(lock).shape}")
+       
         self._step_mujoco_simulation(ctrl, lock, n_frames, active_groups)
 
     def state_vector(self) -> NDArray[np.float64]:
