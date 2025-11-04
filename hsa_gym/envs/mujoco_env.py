@@ -44,7 +44,8 @@ class CustomMujocoEnv(gym.Env):
         default_camera_config: dict[str, float | int] | None = None,
         max_geom: int = 1000,
         visual_options: dict[int, bool] = {},
-        actuator_groups: list[int] = [0, 1, 2]
+        actuator_groups: list[int] = [0, 1, 2],
+        use_locks: bool = False,
     ):
         """
         Base abstract class for MuJoCo based environments.
@@ -60,6 +61,8 @@ class CustomMujocoEnv(gym.Env):
         :param default_camera_config: Configuration for rendering camera
         :param max_geom: Maximum number of rendered geometries
         :param visual_options: render flag options
+        :param actuator_groups: List of actuator groups to enable
+        :param use_locks: Whether to control disc locks in the simulation
         """
 
         self.fullpath = expand_model_path(model_path)
@@ -102,7 +105,9 @@ class CustomMujocoEnv(gym.Env):
         )
 
 
-    def _set_action_space(self, active_groups: list[int] = [1]) :
+    def _set_action_space(self, 
+                          active_groups: list[int] = [1], 
+                          use_locks: bool = False) -> spaces.Dict:
         """
         Set the action space of the environment.
         """
@@ -122,12 +127,16 @@ class CustomMujocoEnv(gym.Env):
         # Action space for actuators
         continous_space = spaces.Box(low=final_low, high=final_high, dtype=np.float32)
         # Action space for disc unlocking/locking
-        discrete_space = spaces.MultiBinary(4)
-
-        self.action_space = spaces.Dict({
-            "motors": continous_space,
-            "locks": discrete_space
-        })
+        if use_locks:
+            discrete_space = spaces.MultiBinary(4)
+            self.action_space = spaces.Dict({
+                "motors": continous_space,
+                "locks": discrete_space
+            })
+        else:
+            self.action_space = spaces.Dict({
+                "motors": continous_space
+            })
         return self.action_space
     
     def _initialize_simulation(self, actuator_groups: list[int] = [1]) -> tuple[mujoco.MjModel, mujoco.MjData]:
@@ -161,8 +170,8 @@ class CustomMujocoEnv(gym.Env):
     
     def _step_mujoco_simulation(self, 
                                 ctrl: NDArray[np.float32], 
-                                lock: NDArray[np.int8], 
-                                n_frames: int,
+                                lock: NDArray[np.int8] | None = None, 
+                                n_frames: int = 4,
                                 active_groups: list[int] = [1]) -> None:
         """
         Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs and constraints.
@@ -178,8 +187,11 @@ class CustomMujocoEnv(gym.Env):
             active.extend(range(start, start + 8))
         
         self.data.ctrl[active] = ctrl
-        self.data.eq_active[:] = lock
-        
+        if lock is not None:
+            self.data.eq_active[:] = lock
+        else:
+            self.data.eq_active[:] = 1
+
         mujoco.mj_step(self.model, self.data, nstep=n_frames)
 
         mujoco.mj_rnePostConstraint(self.model, self.data)
@@ -240,21 +252,25 @@ class CustomMujocoEnv(gym.Env):
 
     def do_simulation(self, 
                       action: dict[str, NDArray[np.float32 | np.uint8]], n_frames: int,
-                      active_groups: list[int] = [1]) -> None:
+                      active_groups: list[int] = [1],
+                      use_locks: bool = False) -> None:
         """
         Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs.
 
         :param action: Control inputs for the actuators
         """
         ctrl = action["motors"]
-        lock = action["locks"]
+        if use_locks:
+            lock = action["locks"]
+        else:
+            lock = None
         # if np.array(ctrl).shape != (self.model.nu,):
         #     raise ValueError(
         #         f"Control dimension mismatch. Expected {(self.model.nu,)}, found {np.array(ctrl).shape}")
         
-        if np.array(lock).shape != (self.data.eq_active.shape):
-            raise ValueError(
-                f"Lock dimension mismatch. Expected {self.data.eq_active.shape}, found {np.array(lock).shape}")
+        # if np.array(lock).shape != (self.data.eq_active.shape):
+        #     raise ValueError(
+        #         f"Lock dimension mismatch. Expected {self.data.eq_active.shape}, found {np.array(lock).shape}")
         self._step_mujoco_simulation(ctrl, lock, n_frames, active_groups)
 
     def state_vector(self) -> NDArray[np.float64]:
