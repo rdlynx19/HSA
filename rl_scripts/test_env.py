@@ -7,11 +7,8 @@ obs, info = env.reset()
 print("Initial Observation:", obs.shape)
 print("Initial Info:", info)
 
-for i in range(10):
-    action = {
-        "motors": env.action_space["motors"].sample(),
-        "locks": env.action_space["locks"].sample()
-    }
+for i in range(1000):
+    action = env.action_space.sample() 
     obs, reward, terminated, truncated, info = env.step(action)
 
     print(f"Step {i+1}:")
@@ -20,5 +17,6 @@ for i in range(10):
     print(f"Terminated: {terminated}, Truncated: {truncated}")
 
     if terminated or truncated:
+        print("Episode finished after {} timesteps".format(i+1))
         break
 env.close()

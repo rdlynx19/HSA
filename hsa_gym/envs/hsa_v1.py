@@ -20,6 +20,7 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
                  forward_reward_weight: float = 1.0,
                  ctrl_cost_weight: float = 1e-4,
                  randomize_goal: bool = False,
+                 actuator_groups: list[int] = [1],
                  **kwargs):
         
         utils.EzPickle.__init__(self,
@@ -38,11 +39,14 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         # Initializing goal position
         self.goal = np.zeros(2)
 
+        self.actuator_groups = actuator_groups
+
         CustomMujocoEnv.__init__(self,
                            xml_file,
                            frame_skip,
                            observation_space=None,
                            default_camera_config=default_camera_config,
+                           actuator_groups=actuator_groups,
                            **kwargs)
         
         self.metadata = {
@@ -53,7 +57,7 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         # Observation Size
         observation_size = (
             self.data.qpos.size
-            + self.data.qvel.size
+            + self.data.qacc.size
             + 1  # for distance from goal position
         )
 
@@ -68,7 +72,7 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         # Observation Structure
         self.observation_structure = {
             "qpos": self.data.qpos.size,
-            "qvel": self.data.qvel.size,
+            "qvel": self.data.qacc.size,
             "goal_distance": 1
         }
   
@@ -93,11 +97,12 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         :param action: Action dictionary containing motor commands and disc lock/unlock signals
         :return: A tuple containing the observation, reward, termination status, truncation status, and info dictionary
         """
+        print(action)
         prv_dist = self._get_distance_to_goal()
-        self.do_simulation(action, self.frame_skip)
+        self.do_simulation(action, self.frame_skip, self.actuator_groups)
         observation = self._get_obs()
         reward, reward_info = self._get_reward(action)
-        terminated = self._get_distance_to_goal() < 0.05
+        terminated = (self._get_distance_to_goal() < 0.05) or (not np.isfinite(observation).all() or np.isnan(observation).any())
         truncated = False
         info = {
             "prev_distance": prv_dist,
@@ -146,12 +151,12 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         :return: Observation as a numpy array
         """
         position = self.data.qpos.flatten()
-        velocity = self.data.qvel.flatten()
+        acc = self.data.qacc.flatten()
 
         # Distance from goal position
         goal_distance = self._get_distance_to_goal()
 
-        observation = np.concatenate([position, velocity, [goal_distance]]).ravel()
+        observation = np.concatenate([position, acc, [goal_distance]]).ravel()
         return observation
 
     def reset_model(self) -> NDArray[np.float64]:
@@ -160,7 +165,7 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
 
         :return: Initial observation after reset
         """
-        self.set_state(self.init_qpos, self.init_qvel)
+        self.set_state(self.init_qpos, self.init_qacc)
         
         # Assign a new goal at reset
         self.goal = self._sample_goal()
@@ -188,7 +193,7 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
             low, high = self.goal_bounds[:, 0], self.goal_bounds[:, 1]
             return np.random.uniform(low=low, high=high)
         else:
-            return np.array([2.0, 2.0])
+            return np.array([2.0, 0.0])
 
     def _compute_COM(self) -> NDArray[np.float64]:
         """
