@@ -21,7 +21,7 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
                  ctrl_cost_weight: float = 1e-4,
                  randomize_goal: bool = False,
                  actuator_groups: list[int] = [1],
-                 use_locks: bool = True,
+                 use_locks: bool = False,
                  **kwargs):
         
         utils.EzPickle.__init__(self,
