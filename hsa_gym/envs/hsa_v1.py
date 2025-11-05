@@ -100,7 +100,6 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         :param action: Action dictionary containing motor commands and disc lock/unlock signals
         :return: A tuple containing the observation, reward, termination status, truncation status, and info dictionary
         """
-        print(action)
         prv_dist = self._get_distance_to_goal()
         self.do_simulation(action, self.frame_skip, self.actuator_groups)
         observation = self._get_obs()
