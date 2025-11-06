@@ -18,7 +18,7 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
                  frame_skip: int = 4,
                  default_camera_config: dict[str, float | int] = {},
                  forward_reward_weight: float = 1.0,
-                 ctrl_cost_weight: float = 1e-4,
+                 ctrl_cost_weight: float = 1e-2,
                  randomize_goal: bool = False,
                  actuator_groups: list[int] = [1],
                  use_locks: bool = False,
@@ -75,10 +75,12 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         # Observation Structure
         self.observation_structure = {
             "qpos": self.data.qpos.size,
-            "qvel": self.data.qacc.size,
+            "qacc": self.data.qacc.size,
             "goal_distance": 1
         }
   
+        # Previous action for smoothing reward calculation
+        self.prev_action = np.zeros(self.action_space["motors"].shape[0], dtype=np.float32)
 
     # Control cost to penalize large actions
     def control_cost(self, 
@@ -90,7 +92,11 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         :param action: Action dictionary containing motor commands
         :return: Control cost as a float
         """
-        control_cost = self._ctrl_cost_weight * np.sum(np.square(action["motors"]))
+        # Compute the difference between current and previous actions
+        action_diff = action["motors"] - self.prev_action
+        control_cost = self._ctrl_cost_weight * np.sum(np.square(action_diff))
+        self.prev_action = action["motors"].copy()
+
         return control_cost
 
     def step(self, action: dict[str, NDArray[np.float32 | np.uint8]]) -> tuple[NDArray[np.float64], np.float64, bool, bool, dict[str, np.float64]]:
@@ -103,8 +109,12 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         prv_dist = self._get_distance_to_goal()
         self.do_simulation(action, self.frame_skip, self.actuator_groups)
         observation = self._get_obs()
+
         reward, reward_info = self._get_reward(action)
-        terminated = (self._get_distance_to_goal() < 0.05) or (not np.isfinite(observation).all() or np.isnan(observation).any() or self.get_body_com("block_a")[2] > 0.4 or self.get_body_com("block_b")[2] > 0.4)
+        terminated = ((self._get_distance_to_goal() < 0.05) or 
+                      (self.get_body_com("block_a")[2] > 0.4) or 
+                      (self.get_body_com("block_b")[2] > 0.4)
+        )
         truncated = False
         info = {
             "prev_distance": prv_dist,
@@ -128,7 +138,8 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         cur_dist = self._get_distance_to_goal() 
         
         # Reward is based on reduction in distance to goal
-        progress_reward = self._forward_reward_weight * (self.prev_dist - cur_dist)
+        progress_reward = ((self._forward_reward_weight) 
+                           * (self.prev_dist - cur_dist))
 
         # Control cost penalty
         ctrl_cost = self.control_cost(action)
@@ -138,7 +149,7 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
             "reward_ctrl_cost": -ctrl_cost,
         }
 
-        # Bonmus for reaching close to the goal
+        # Bonus for reaching close to the goal
         if cur_dist < 0.05:
             reward += 1.0
 
@@ -172,6 +183,10 @@ class HSAEnv(CustomMujocoEnv, utils.EzPickle):
         # Assign a new goal at reset
         self.goal = self._sample_goal()
         self.prev_dist = self._get_distance_to_goal()
+
+        # Initialize previous action at reset
+        self.prev_action = np.zeros(self.action_space["motors"].shape[0], dtype=np.float32)
+
         observation = self._get_obs()
         return observation
     
