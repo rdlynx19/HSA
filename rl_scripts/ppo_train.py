@@ -71,7 +71,7 @@ def make_vec_env(actuator_groups: list[int] = [1], use_locks: bool = True, max_e
         return env
     return _init
 
-def load_config(config_path: str = "configs/ppo_hsa.yaml"):
+def load_config(config_path: str = "./configs/ppo_hsa.yaml"):
     """
     Load training configuration from a YAML file
     """
@@ -90,7 +90,9 @@ def get_latest_checkpoint(checkpoint_dir: str = "checkpoints/"):
     return checkpoint_files[-1]
 
 def main():
-    config = load_config("configs/ppo_hsa.yaml")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(script_dir, "./configs/ppo_hsa.yaml")
+    config = load_config(config_path)
 
     checkpoint_dir = config["train"]["checkpoint_dir"]
     checkpoint_freq = config["train"]["checkpoint_freq"]
