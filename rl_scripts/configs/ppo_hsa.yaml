@@ -19,6 +19,8 @@ train:
   total_timesteps: 5_000_000
   log_dir: "./logs/ppo_hsa/"
   run_name: "ppo_lamb1"
-  save_freq: 100_000
+  checkpoint_dir: "./checkpoints/"
+  checkpoint_freq: 100_000
+  resume: false
 
   
