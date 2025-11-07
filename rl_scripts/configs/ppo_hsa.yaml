@@ -1,9 +1,7 @@
 env:
-  n_envs: 8
+  n_envs: 4
   actuator_groups: [1]
-  use_locks: false
   max_episode_steps: 2000
-  randomize_goal: false
 
 model:
   policy: "MlpPolicy"
@@ -16,9 +14,9 @@ model:
   ent_coef: 0.0
 
 train:
-  total_timesteps: 5_000_000
+  total_timesteps: 1_000_000
   log_dir: "./logs/ppo_hsa/"
-  run_name: "ppo_lamb1"
+  run_name: "ppo_lamb2"
   checkpoint_dir: "./checkpoints/"
   checkpoint_freq: 100_000
   resume: false

@@ -237,6 +237,7 @@ class CustomMujocoEnv(gym.Env):
 
     def do_simulation(self, 
                       action: NDArray[np.float32], 
+                      prev_action: NDArray[np.float32],
                       n_frames: int,
                       active_groups: list[int] = [1]) -> None:
         """
@@ -244,8 +245,12 @@ class CustomMujocoEnv(gym.Env):
 
         :param action: Control inputs for the actuators
         """
-        ctrl = action
-        self._step_mujoco_simulation(ctrl, n_frames, active_groups)
+        alpha = 0.2
+        smoothed_action = prev_action + alpha * (action - prev_action)
+        smoothed_action = np.clip(smoothed_action, 
+                                      self.action_space.low, 
+                                      self.action_space.high)
+        self._step_mujoco_simulation(smoothed_action, n_frames, active_groups)
 
     def state_vector(self) -> NDArray[np.float64]:
         """

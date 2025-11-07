@@ -18,7 +18,7 @@ class HSAEnv(CustomMujocoEnv):
                  frame_skip: int = 4,
                  default_camera_config: dict[str, float | int] = {},
                  forward_reward_weight: float = 1.0,
-                 ctrl_cost_weight: float = 1e-2,
+                 ctrl_cost_weight: float = 1e-3,
                  actuator_groups: list[int] = [1],
                  **kwargs):
 
@@ -44,7 +44,7 @@ class HSAEnv(CustomMujocoEnv):
         observation_size = (
             self.data.qpos.size
             + self.data.qvel.size
-            + 1  # COM position of robot
+            + 2  # XY com position of robot
         )
 
         # Observation Space
@@ -59,7 +59,7 @@ class HSAEnv(CustomMujocoEnv):
         self.observation_structure = {
             "qpos": self.data.qpos.size,
             "qvel": self.data.qvel.size,
-            "com_position": 1,
+            "com_position": 2,
         }
   
         # Previous action for smoothing reward calculation
@@ -93,7 +93,7 @@ class HSAEnv(CustomMujocoEnv):
         :return: A tuple containing the observation, reward, termination status, truncation status, and info dictionary
         """
         previous_position = self._compute_COM()
-        self.do_simulation(action, self.frame_skip, self.actuator_groups)
+        self.do_simulation(action, self.prev_action, self.frame_skip, self.actuator_groups)
         current_position = self._compute_COM()
 
         # Calculate velocity
@@ -101,9 +101,11 @@ class HSAEnv(CustomMujocoEnv):
         x_velocity, y_velocity = xy_velocity
         
         observation = self._get_obs()
-        reward, reward_info = self._get_reward(action)
+        reward, reward_info = self._get_reward(action, x_velocity)
         terminated = ((self.get_body_com("block_a")[2] > 0.4) or 
-                      (self.get_body_com("block_b")[2] > 0.4))
+                      (self.get_body_com("block_b")[2] > 0.4) or
+                      (np.isnan(observation).any()) or
+                       (np.isinf(observation).any()))
         
         truncated = False
         info = {
@@ -152,9 +154,9 @@ class HSAEnv(CustomMujocoEnv):
         vel = self.data.qvel.flatten()
 
         # Current position of the robot's COM
-        current_position = self._compute_COM()
+        current_position = self._compute_COM().flatten()
 
-        observation = np.concatenate([pos, vel, [current_position]]).ravel()
+        observation = np.concatenate([pos, vel, current_position]).ravel()
         return observation
 
     def reset_model(self) -> NDArray[np.float64]:

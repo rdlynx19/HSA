@@ -2,7 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from gymnasium import utils
-from .mujoco_env import CustomMujocoEnv
+from .mujoco_env_v1 import CustomMujocoEnv
 from gymnasium.spaces import Box, Space
 
 class HSAEnv(CustomMujocoEnv, utils.EzPickle):
