@@ -6,7 +6,7 @@ from gymnasium.wrappers import TimeLimit
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
 from stable_baselines3.common.callbacks import CheckpointCallback
 
 from hsa_gym.envs.hsa_v2 import HSAEnv
@@ -54,6 +54,8 @@ def main():
         wrapper_kwargs={"max_episode_steps": config["env"]["max_episode_steps"]},
     )
 
+    # Keep track of episode statistics
+    env = VecMonitor(env)
 
     # Load model if resuming from checkpoint
     model = None
