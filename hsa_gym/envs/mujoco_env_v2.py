@@ -45,6 +45,7 @@ class CustomMujocoEnv(gym.Env):
         max_geom: int = 1000,
         visual_options: dict[int, bool] = {},
         actuator_groups: list[int] = [0, 1, 2],
+        normalize_actions: bool = True,
     ):
         """
         Base abstract class for MuJoCo based environments.
@@ -61,6 +62,7 @@ class CustomMujocoEnv(gym.Env):
         :param max_geom: Maximum number of rendered geometries
         :param visual_options: render flag options
         :param actuator_groups: List of actuator groups to enable
+        :param normalize_actions: Whether to normalize actions to [-1, 1]
         """
 
         self.fullpath = expand_model_path(model_path)
@@ -81,9 +83,18 @@ class CustomMujocoEnv(gym.Env):
                 int(np.round(1.0 / self.dt)) == self.metadata["render_fps"]
             ), f'Expected value: {int(np.round(1.0 / self.dt))}, Actual value: {self.metadata["render_fps"]}'
 
+        self.normalize_actions = normalize_actions
+
         if observation_space is not None:
             self.observation_space = observation_space
-        self._set_action_space(active_groups=actuator_groups)
+        self._set_action_space(active_groups=actuator_groups, 
+                               normalize_actions=normalize_actions)
+
+        # Store actuator control ranges for active groups
+        self.actuator_ctrlrange = np.column_stack([
+            self._original_action_space_low.copy(),
+            self._original_action_space_high.copy()
+        ]).astype(np.float32)
 
         self.render_mode = render_mode
         self.camera_name = camera_name
@@ -105,7 +116,8 @@ class CustomMujocoEnv(gym.Env):
 
 
     def _set_action_space(self, 
-                          active_groups: list[int] = [1]) -> spaces.Box:
+                          active_groups: list[int] = [1],
+                          normalize_actions: bool = True) -> spaces.Box:
         """
         Set the action space of the environment.
         """
@@ -122,10 +134,19 @@ class CustomMujocoEnv(gym.Env):
         final_low = np.concatenate(low).astype(np.float32)
         final_high = np.concatenate(high).astype(np.float32)
 
+        # Store original action space bounds
+        self._original_action_space_low = final_low.copy()
+        self._original_action_space_high = final_high.copy()
+
+        if normalize_actions:
         # Action space for actuators
-        self.action_space = spaces.Box(low=final_low, 
-                                       high=final_high, 
-                                       dtype=np.float32)
+            self.action_space = spaces.Box(low=-1.0, 
+                                        high=1.0,
+                                        dtype=np.float32)
+        else:
+            self.action_space = spaces.Box(low=final_low,
+                                        high=final_high,
+                                        dtype=np.float32)
         return self.action_space
     
     def _initialize_simulation(self, 

@@ -19,13 +19,20 @@ class HSAEnv(CustomMujocoEnv):
                  default_camera_config: dict[str, float | int] = {},
                  forward_reward_weight: float = 1.0,
                  ctrl_cost_weight: float = 1e-3,
+                 contact_force_range: tuple[float, float] = (-1.0, 1.0),
+                 contact_cost_weight: float = 0.5e-3,
+                 yvel_cost_weight: float = 0.05,
                  actuator_groups: list[int] = [1],
+                 clip_actions: float = 1.0,
                  **kwargs):
 
         self._forward_reward_weight = forward_reward_weight
         self._ctrl_cost_weight = ctrl_cost_weight
-
+        self._contact_force_range = contact_force_range
+        self._contact_cost_weight = contact_cost_weight
+        self._yvel_cost_weight = yvel_cost_weight
         self.actuator_groups = actuator_groups
+        self._clip_actions = clip_actions
 
         CustomMujocoEnv.__init__(self,
                            xml_file,
@@ -65,6 +72,35 @@ class HSAEnv(CustomMujocoEnv):
         # Previous action for smoothing reward calculation
         self.prev_action = np.zeros(self.action_space.shape[0], 
                                     dtype=np.float32)
+        self.prev_scaled_action = np.zeros(self.action_space.shape[0],
+                                          dtype=np.float32)
+        
+        
+    def _scale_action(self, 
+                      norm_action: NDArray[np.float32]) -> NDArray[np.float32]:
+        """
+        Scale the normalized action the actuator control range
+        :param norm_action: Normalized action in [-1, 1]
+        :return: Scaled action within actuator control range
+        """
+        # Clip to ensure action is within bounds
+        clipped_action = np.clip(norm_action, 
+                                 -self._clip_actions, 
+                                 self._clip_actions)
+        ctrl_min = self.actuator_ctrlrange[:, 0]
+        ctrl_max = self.actuator_ctrlrange[:, 1]
+
+        # Calculate center and range for each actuator
+        ctrl_center = (ctrl_max + ctrl_min) / 2.0
+        ctrl_range = (ctrl_max - ctrl_min) / 2.0
+
+        # Scale normalized action to actuator control range
+        scaled_action = ctrl_center + (clipped_action * ctrl_range)
+
+        # Final clipping to actuator limits
+        scaled_action = np.clip(scaled_action, ctrl_min, ctrl_max)
+        return scaled_action
+
 
     # Control cost to penalize large actions
     def control_cost(self, 
@@ -82,6 +118,28 @@ class HSAEnv(CustomMujocoEnv):
         self.prev_action = action.copy()
 
         return control_cost
+    
+    def contact_forces(self) -> NDArray[np.float64]:
+        """
+        Get the contact forces in the environment.
+
+        :return: Clipped contact forces
+        """
+        raw_contact_forces = self.data.cfrc_ext.copy()
+        min_value, max_value = self._contact_force_range
+        contact_forces = np.clip(raw_contact_forces, min_value, max_value)
+        return contact_forces
+    
+    def contact_cost(self) -> float:
+        """
+        Compute the contact cost based on contact forces.
+
+        :return: Contact cost
+        """
+        contact_cost = self._contact_cost_weight * np.sum(
+            np.square(self.contact_forces())
+        )
+        return contact_cost
 
     def step(self, 
              action: NDArray[np.float32]
@@ -89,11 +147,18 @@ class HSAEnv(CustomMujocoEnv):
         """
         Take a step in the environment using the provided action.
 
-        :param action: Action dictionary containing motor commands 
+        :param action: Action dictionary containing motor commands, normalized in [-1, 1] 
         :return: A tuple containing the observation, reward, termination status, truncation status, and info dictionary
         """
+        # Scale action to actuator control range
+        scaled_action = self._scale_action(action)
+
         previous_position = self._compute_COM()
-        self.do_simulation(action, self.prev_action, self.frame_skip, self.actuator_groups)
+        self.do_simulation(scaled_action, 
+                           self.prev_scaled_action, 
+                           self.frame_skip, 
+                           self.actuator_groups)
+        self.prev_scaled_action = scaled_action.copy()
         current_position = self._compute_COM()
 
         # Calculate velocity
@@ -101,7 +166,7 @@ class HSAEnv(CustomMujocoEnv):
         x_velocity, y_velocity = xy_velocity
         
         observation = self._get_obs()
-        reward, reward_info = self._get_reward(action, x_velocity)
+        reward, reward_info = self._get_reward(action, x_velocity, y_velocity)
         terminated = ((self.get_body_com("block_a")[2] > 0.4) or 
                       (self.get_body_com("block_b")[2] > 0.4) or
                       (np.isnan(observation).any()) or
@@ -124,11 +189,12 @@ class HSAEnv(CustomMujocoEnv):
     def _get_reward(self, 
                     action: NDArray[np.float32],
                     x_velocity: float = 0.0,
+                    y_velocity: float = 0.0,
                     ) -> tuple[float, dict[str, float]]:
         """
         Compute the reward for the current step.
 
-        :param action: Action dictionary containing motor commands 
+        :param action: Action dictionary containing motor commands in [-1, 1]
         :return: A tuple containing the reward and a dictionary of reward components
         """
         # Reward is based on velocity in x direction
@@ -136,10 +202,16 @@ class HSAEnv(CustomMujocoEnv):
 
         # Control cost penalty
         ctrl_cost = self.control_cost(action)
-        reward = forward_reward - ctrl_cost
+        contact_cost = self.contact_cost()
+        yvel_cost = self._yvel_cost_weight * np.square(y_velocity)
+
+        costs = ctrl_cost + contact_cost + yvel_cost
+        reward = forward_reward - costs
         reward_info = {
             "reward_forward": forward_reward,
             "reward_ctrl_cost": -ctrl_cost,
+            "reward_contact_cost": -contact_cost,
+            "reward_yvel_cost": -yvel_cost,
         }
     
         return reward, reward_info
@@ -170,6 +242,8 @@ class HSAEnv(CustomMujocoEnv):
         # Initialize previous action at reset
         self.prev_action = np.zeros(self.action_space.shape[0], 
                                     dtype=np.float32)
+        self.prev_scaled_action = np.zeros(self.action_space.shape[0],
+                                          dtype=np.float32)
 
         observation = self._get_obs()
         return observation
