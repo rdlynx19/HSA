@@ -1,11 +1,10 @@
 """
-HSA Env Class for Torque Control.
+HSA Env Class for Torque Control. Action space is positions for the actuators.
 """
 import numpy as np
 from numpy.typing import NDArray
 
-from gymnasium import utils
-from .mujoco_env_v2 import CustomMujocoEnv
+from .mujoco_env_v3 import CustomMujocoEnv
 from gymnasium.spaces import Box
 
 class HSAEnv(CustomMujocoEnv):
@@ -18,7 +17,7 @@ class HSAEnv(CustomMujocoEnv):
 
     def __init__(self, 
                  xml_file: str = "hsaModel.xml",
-                 frame_skip: int = 20,
+                 frame_skip: int = 4,
                  default_camera_config: dict[str, float | int] = {},
                  forward_reward_weight: float = 1.0,
                  ctrl_cost_weight: float = 1e-3,
@@ -26,9 +25,10 @@ class HSAEnv(CustomMujocoEnv):
                  contact_cost_weight: float = 1e-5,
                  yvel_cost_weight: float = 0.5e-3,
                  actuator_groups: list[int] = [0],
+                 action_group: list[int] = [1],
                  clip_actions: float = 1.0,
                  normalize_actions: bool = True,
-                 pd_pos_control: bool = True,
+                 use_pd_control: bool = True,
                  pos_gain: float = 40.0,
                  vel_gain: float = 0.05,
                  max_velocity: float = 35.0,
@@ -39,20 +39,21 @@ class HSAEnv(CustomMujocoEnv):
         self._contact_force_range = contact_force_range
         self._contact_cost_weight = contact_cost_weight
         self._yvel_cost_weight = yvel_cost_weight
-        self.actuator_groups = actuator_groups
+        self._actuator_groups = actuator_groups
         self._clip_actions = clip_actions
 
         CustomMujocoEnv.__init__(self,
-                           xml_file,
-                           frame_skip,
-                           observation_space=None,
-                           default_camera_config=default_camera_config,
-                           actuator_groups=self.actuator_groups,
-                           normalize_actions=normalize_actions,
-                           pd_pos_control=pd_pos_control,
-                           pos_gain=pos_gain,
-                           vel_gain=vel_gain,
-                           max_velocity=max_velocity,
+                            xml_file,
+                            frame_skip,
+                            observation_space=None,
+                            default_camera_config=default_camera_config,
+                            actuator_groups=actuator_groups,
+                            action_group=action_group,
+                            normalize_actions=normalize_actions,
+                            use_pd_control=use_pd_control,
+                            pos_gain=pos_gain,
+                            vel_gain=vel_gain,
+                            max_velocity=max_velocity,
                            **kwargs)
         
         self.metadata = {
@@ -84,6 +85,7 @@ class HSAEnv(CustomMujocoEnv):
             "qpos": self.data.qpos.size,
             "qvel": self.data.qvel.size,
             "com_position": 2,
+            "base_velocity": 3,
         }
   
         # Previous action for smoothing reward calculation
@@ -91,7 +93,6 @@ class HSAEnv(CustomMujocoEnv):
                                     dtype=np.float32)
         self.prev_scaled_action = np.zeros(self.action_space.shape[0],
                                           dtype=np.float32)
-
       
 
 
@@ -99,6 +100,7 @@ class HSAEnv(CustomMujocoEnv):
                       norm_action: NDArray[np.float32]) -> NDArray[np.float32]:
         """
         Scale the normalized action the actuator control range
+
         :param norm_action: Normalized action in [-1, 1]
         :return: Scaled action within actuator control range
         """
@@ -106,18 +108,19 @@ class HSAEnv(CustomMujocoEnv):
         clipped_action = np.clip(norm_action, 
                                  -self._clip_actions, 
                                  self._clip_actions)
-        ctrl_min = self.actuator_ctrlrange[:, 0]
-        ctrl_max = self.actuator_ctrlrange[:, 1]
+        
+        action_min = self.unnorm_action_space_bounds[:, 0]
+        action_max = self.unnorm_action_space_bounds[:, 1]
 
-        # Map [-1, 1] to [ctrl_min, ctrl_max]
-        # Formula: scaled = ctrl_min + ( (norm_action + 1) / 2 ) * (ctrl_max - ctrl_min)
-        # this maps action = -1 -> ctrl_min, action = 1 -> ctrl_max
+        # Map [-1, 1] to [action_min, action_max]
+        # Formula: scaled = action_min + ( (norm_action + 1) / 2 ) * (action_max - action_min)
+        # this maps action = -1 -> action_min, action = 1 -> action_max
 
-        # Scale normalized action to actuator control range
-        scaled_action = ctrl_min + ((clipped_action + 1.0) / 2.0) * (ctrl_max - ctrl_min)
+        # Scale normalized action to unnormalized action space
+        scaled_action = action_min + ((clipped_action + 1.0) / 2.0) * (action_max - action_min)
 
-        # Final clipping to actuator limits
-        scaled_action = np.clip(scaled_action, ctrl_min, ctrl_max)
+        # Final clipping to action limits
+        scaled_action = np.clip(scaled_action, action_min, action_max)
         return scaled_action
 
 
@@ -169,7 +172,7 @@ class HSAEnv(CustomMujocoEnv):
         :param action: Action dictionary containing motor commands, normalized in [-1, 1] 
         :return: A tuple containing the observation, reward, termination status, truncation status, and info dictionary
         """
-        # Scale action to actuator control range
+        # Scale action to unnormalized action space
         scaled_action = self._scale_action(action)
 
         previous_position = self._compute_COM()
@@ -190,18 +193,21 @@ class HSAEnv(CustomMujocoEnv):
                       (self.get_body_com("block_b")[2] > 0.4) or
                       (np.isnan(observation).any()) or
                        (np.isinf(observation).any()))
-        
+
         actual_pos = self.data.qpos[self.actuated_qpos_indices].copy()
+        # Actual torque is for first 8 actuators only
+        actual_trq = self.data.ctrl[0:8].copy()
 
         truncated = False
         info = {
-            "prev_position": previous_position,
-            "cur_position": current_position,
+            "previous_position": previous_position,
+            "current_position": current_position,
             "x_velocity": x_velocity,
             "y_velocity": y_velocity,
-            "des_pos": scaled_action,
-            "actual_pos": actual_pos,
+            "desired_position": scaled_action,
+            "actual_position": actual_pos,
             "tracking_error": np.mean(np.abs(scaled_action - actual_pos)),
+            "applied_torque": actual_trq,
             **reward_info
         }
 
@@ -306,14 +312,18 @@ class HSAEnv(CustomMujocoEnv):
         x_velocity, y_velocity = xy_velocity
 
         scaled_action = self.prev_scaled_action.copy()
+        
         actual_pos = self.data.qpos[self.actuated_qpos_indices].copy()
+        # Actual torque is for first 8 actuators only
+        actual_trq = self.data.ctrl[0:8].copy()
         info = {
-            "prev_position": previous_position,
-            "cur_position": current_position,
+            "previous_position": previous_position,
+            "current_position": current_position,
             "x_velocity": x_velocity,
             "y_velocity": y_velocity,
-            "des_pos": scaled_action,
-            "actual_pos": actual_pos,
+            "desired_position": scaled_action,
+            "actual_position": actual_pos,
             "tracking_error": np.mean(np.abs(scaled_action - actual_pos)),
+            "applied_torque": actual_trq, 
         }
         return info

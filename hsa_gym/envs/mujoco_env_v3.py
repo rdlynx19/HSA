@@ -1,5 +1,5 @@
 """
-Base Class for Torque Control.
+Base Class for Torque Control. Action Space should output desired positions.
 """
 
 from os import path
@@ -49,11 +49,13 @@ class CustomMujocoEnv(gym.Env):
         max_geom: int = 1000,
         visual_options: dict[int, bool] = {},
         actuator_groups: list[int] = [0, 1, 2],
+        action_group: list[int] = [1],
         normalize_actions: bool = True,
-        pd_pos_control: bool = True,
+        use_pd_control: bool = True,
         pos_gain: float = 5.0,
         vel_gain: float = 0.1,
         max_velocity: float = 5.0,
+        clip_torques: float = 50.0
     ):
         """
         Base abstract class for MuJoCo based environments.
@@ -70,8 +72,9 @@ class CustomMujocoEnv(gym.Env):
         :param max_geom: Maximum number of rendered geometries
         :param visual_options: render flag options
         :param actuator_groups: List of actuator groups to enable
+        :param action_group: Group for action range selection
         :param normalize_actions: Whether to normalize actions to [-1, 1]
-        :param pd_pos_control: Whether to use PD position control for actuators
+        :param use_pd_control: Whether to use PD position control for actuators
         :param pos_gain: Proportional gain for PD control
         :param vel_gain: Derivative gain for PD control
         :param max_velocity: Maximum velocity for PD control
@@ -99,16 +102,25 @@ class CustomMujocoEnv(gym.Env):
 
         if observation_space is not None:
             self.observation_space = observation_space
+        # Initialize action space
         self._set_action_space(active_groups=actuator_groups, 
                                normalize_actions=normalize_actions)
 
         # Store actuator control ranges for active groups
         self.actuator_ctrlrange = np.column_stack([
+            self._actuator_range_low.copy(),
+            self._actuator_range_high.copy()
+        ]).astype(np.float32)
+
+        # Store unnormalized action space bounds
+        self.unnorm_action_space_bounds = np.column_stack([
             self._original_action_space_low.copy(),
             self._original_action_space_high.copy()
         ]).astype(np.float32)
-        
-        self.pd_pos_control = pd_pos_control
+
+         # PD Control parameters
+
+        self.use_pd_control = use_pd_control
         self.pos_gain = pos_gain
         self.vel_gain = vel_gain
         self.max_velocity = max_velocity
@@ -116,6 +128,8 @@ class CustomMujocoEnv(gym.Env):
         self.render_mode = render_mode
         self.camera_name = camera_name
         self.camera_id = camera_id
+
+        self.torque_limits = clip_torques
 
         from gymnasium.envs.mujoco.mujoco_rendering import MujocoRenderer
 
@@ -130,6 +144,8 @@ class CustomMujocoEnv(gym.Env):
             camera_name,
             visual_options,
         )
+        # qpos indices of actuated joints
+        self.actuated_qpos_indices = [7, 22, 9, 23, 20, 8, 21, 10]
 
         # # Debug: Print actuator to joint mapping
         # for i in range(self.model.nu): # model.nu is the number of actuators
@@ -139,84 +155,87 @@ class CustomMujocoEnv(gym.Env):
         #     joint_name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_JOINT, jnt_id)
         #     print(f"  -> controls Joint ID: {jnt_id}, Name: {joint_name}")
 
-    def _compute_pd_control(self,
-                            desired_pos: NDArray[np.float32],
-                            dt: float
-                            ) -> NDArray[np.float32]:
+
+    def _compute_torques(self,
+                        scaled_action: NDArray[np.float32],
+                        ) -> NDArray[np.float32]:
         """
         Compute intermediate target pos using PD control.
 
-        :param desired_pos: Final desired positions from the policy
-        :param dt: timestep 
-        :return: Intermediate target positions to send to the actuators
+        :param scaled_action: Target joint positions from the policy
+        :param dt: timestep
+        :return: Computed torques
         """
-        if not self.pd_pos_control:
-            return desired_pos
-        
-        # Get current positions and velocities
-        num_act = len(desired_pos)
-        current_pos = self.data.qpos[:num_act].copy()
-        current_vel = self.data.qvel[:num_act].copy()
+        # Get current joint state
+        current_pos = self.data.qpos[self.actuated_qpos_indices].copy()
+        current_vel = self.data.qvel[self.actuated_qpos_indices].copy()
 
-        # Compute position error
-        pos_error = desired_pos - current_pos
+        # PD control law
+        pos_error = scaled_action - current_pos
+        torques = self.pos_gain * pos_error - self.vel_gain * current_vel
+      
+        # Clip to torque limits
+        torques = np.clip(torques, -self.torque_limits, self.torque_limits)
 
-        # Compute desired velocity using P control with damping
-        # desired_vel = Kp * pos_error - Kd * current_vel
-        desired_vel = self.pos_gain * pos_error - self.vel_gain * current_vel
-
-        # Limit velocity for smooth, safe motion
-        desired_vel = np.clip(desired_vel, 
-                              -self.max_velocity, 
-                              self.max_velocity)
-        
-        # Compute intermediate target position
-        inter_target = current_pos + desired_vel * dt
-        # Clip to actuator limits
-        ctrl_min = self.actuator_ctrlrange[:, 0]
-        ctrl_max = self.actuator_ctrlrange[:, 1]
-        inter_target = np.clip(inter_target, ctrl_min, ctrl_max)
-
-        return inter_target.astype(np.float32)
+        return torques.astype(np.float32)
 
     def _set_action_space(self, 
-                          active_groups: list[int] = [0],
+                          actuator_groups: list[int] = [0],
+                          action_group: list[int] = [1],
                           normalize_actions: bool = True) -> spaces.Box:
         """
         Set the action space of the environment.
+
+        :param action_group: Group for action range selection
+        :param normalize_actions: Whether to normalize actions to [-1, 1]
+        :return: Normalized action space
         """
         bounds = self.model.actuator_ctrlrange.copy().astype(np.float32)
-    
-        low = []
-        high = []
-        for group in active_groups:
+        action_low = []
+        action_high = []
+        for group in action_group:
             start = group * 8
             end = start + 8
-            low.append(bounds[start:end, 0])
-            high.append(bounds[start:end, 1])
+            action_low.append(bounds[start:end, 0])
+            action_high.append(bounds[start:end, 1])
         
-        final_low = np.concatenate(low).astype(np.float32)
-        final_high = np.concatenate(high).astype(np.float32)
+        action_unnorm_low = np.concatenate(action_low).astype(np.float32)
+        action_unnorm_high = np.concatenate(action_high).astype(np.float32)
+
+        actuator_low = []
+        actuator_high = []
+        for group in actuator_groups:
+            start = group * 8
+            end = start + 8
+            actuator_low.append(bounds[start:end, 0])
+            actuator_high.append(bounds[start:end, 1])
+                                                  
+        actuator_unnorm_low = np.concatenate(actuator_low).astype(np.float32)
+        actuator_unnorm_high = np.concatenate(actuator_high).astype(np.float32)
 
         # Store original action space bounds
-        self._original_action_space_low = final_low.copy()
-        self._original_action_space_high = final_high.copy()
+        self._original_action_space_low = action_unnorm_low.copy()
+        self._original_action_space_high = action_unnorm_high.copy()
+
+        # Store actuator range bounds
+        self._actuator_range_low = actuator_unnorm_low.copy()
+        self._actuator_range_high = actuator_unnorm_high.copy()
 
         if normalize_actions:
         # Action space for actuators
             self.action_space = spaces.Box(low=-1.0, 
                                         high=1.0,
-                                        shape=(len(final_low),),
+                                        shape=(len(action_unnorm_low),),
                                         dtype=np.float32)
         else:
-            self.action_space = spaces.Box(low=final_low,
-                                        high=final_high,
-                                        shape=(len(final_low),),
+            self.action_space = spaces.Box(low=action_unnorm_low,
+                                        high=action_unnorm_high,
+                                        shape=(len(action_unnorm_low),),
                                         dtype=np.float32)
         return self.action_space
     
     def _initialize_simulation(self, 
-                               actuator_groups: list[int] = [1]
+                               actuator_groups: list[int] = [0]
                                ) -> tuple[mujoco.MjModel, mujoco.MjData]:
         """
         Initialize MuJoCo simulation data structures `mjModel` and `mjData`. 
@@ -248,33 +267,30 @@ class CustomMujocoEnv(gym.Env):
     
     def _step_mujoco_simulation(self, 
                                 action: NDArray[np.float32],
-                                n_frames: int = 4,
-                                active_groups: list[int] = [0]) -> None:
+                                frame_skip: int = 4,
+                                actuator_groups: list[int] = [0]) -> None:
         """
         Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs and constraints.
 
-        :param action: Control inputs for the actuators
+        :param action: Control inputs for the actuators (scaled action)
         :param n_frames: Number of simulation frames to step
         """
-        active = []
-        for group in active_groups:
+        actuator = []
+        for group in actuator_groups:
             start = group * 8
-            active.extend(range(start, start + 8))
+            actuator.extend(range(start, start + 8))
 
         # Get single physics timestep
         sim_dt = self.model.opt.timestep
 
-        # Step simulation n_frames with PD control if enabled
-        for _ in range(n_frames):
-            if self.pd_pos_control:
-                # Compute smooth intermediate target positions
-                target_to_send = self._compute_pd_control(action, sim_dt)
-            else:
-                target_to_send = action
+        # Step simulation frame_skip with PD control
+        for _ in range(frame_skip):
+            torques = self._compute_torques(action)
 
-            self.data.ctrl[active] = target_to_send
+            # No fallback if PD control is disabled
+
+            self.data.ctrl[actuator] = torques
             mujoco.mj_step(self.model, self.data)
-
         mujoco.mj_rnePostConstraint(self.model, self.data)
         
     def render(self) -> NDArray[np.uint8] | None:
@@ -333,15 +349,14 @@ class CustomMujocoEnv(gym.Env):
 
     def do_simulation(self, 
                       action: NDArray[np.float32], 
-                      prev_action: NDArray[np.float32],
-                      n_frames: int,
-                      active_groups: list[int] = [0]) -> None:
+                      frame_skip: int,
+                      actuator_groups: list[int] = [0]) -> None:
         """
         Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs.
 
         :param action: Control inputs for the actuators
         """
-        self._step_mujoco_simulation(action, n_frames, active_groups)
+        self._step_mujoco_simulation(action, frame_skip, actuator_groups)
 
     def state_vector(self) -> NDArray[np.float64]:
         """
