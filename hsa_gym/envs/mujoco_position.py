@@ -1,3 +1,6 @@
+"""
+Base Class for Position Control. Action space should output desired positions.
+"""
 from os import path
 
 import numpy as np
@@ -45,7 +48,9 @@ class CustomMujocoEnv(gym.Env):
         max_geom: int = 1000,
         visual_options: dict[int, bool] = {},
         actuator_groups: list[int] = [0, 1, 2],
+        action_group: list[int] = [1],
         normalize_actions: bool = True,
+        smooth_positions: bool = True,
     ):
         """
         Base abstract class for MuJoCo based environments.
@@ -62,7 +67,8 @@ class CustomMujocoEnv(gym.Env):
         :param max_geom: Maximum number of rendered geometries
         :param visual_options: render flag options
         :param actuator_groups: List of actuator groups to enable
-        :param normalize_actions: Whether to normalize actions to [-1, 1]
+        :param normalize_actions: Whether to normalize actions to [0, 1]
+        :param smooth_positions: Whether to use smooth positions
         """
 
         self.fullpath = expand_model_path(model_path)
@@ -87,14 +93,23 @@ class CustomMujocoEnv(gym.Env):
 
         if observation_space is not None:
             self.observation_space = observation_space
-        self._set_action_space(active_groups=actuator_groups, 
+        self._set_action_space(actuator_groups=actuator_groups, 
+                               action_group=action_group,
                                normalize_actions=normalize_actions)
 
         # Store actuator control ranges for active groups
         self.actuator_ctrlrange = np.column_stack([
+            self._actuator_range_low.copy(),
+            self._actuator_range_high.copy()
+        ]).astype(np.float32)
+
+        # Store action space unnormalized bounds
+        self.unnorm_action_space_bounds = np.column_stack([
             self._original_action_space_low.copy(),
             self._original_action_space_high.copy()
         ]).astype(np.float32)
+        
+        self.smooth_positions = smooth_positions
 
         self.render_mode = render_mode
         self.camera_name = camera_name
@@ -114,38 +129,65 @@ class CustomMujocoEnv(gym.Env):
             visual_options,
         )
 
+        # for i in range(self.model.nu): # model.nu is the number of actuators
+        #     actuator_name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, i)
+        #     print(f"Actuator ID: {i}, Name: {actuator_name}")
+        #     jnt_id = self.model.actuator_trnid[i, 0]
+        #     joint_name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_JOINT, jnt_id)
+        #     print(f"  -> controls Joint ID: {jnt_id}, Name: {joint_name}")
 
     def _set_action_space(self, 
-                          active_groups: list[int] = [1],
+                          actuator_groups: list[int] = [1],
+                          action_group: list[int] = [1],
                           normalize_actions: bool = True) -> spaces.Box:
         """
         Set the action space of the environment.
+
+        :param actuator_groups: List of actuator groups to enable
+        :param action_group: Group for action range selection
+        :param normalize_actions: Whether to normalize actions to [0, 1]
         """
         bounds = self.model.actuator_ctrlrange.copy().astype(np.float32)
-    
-        low = []
-        high = []
-        for group in active_groups:
+        action_low = []
+        action_high = []
+        for group in action_group:
             start = group * 8
             end = start + 8
-            low.append(bounds[start:end, 0])
-            high.append(bounds[start:end, 1])
+            action_low.append(bounds[start:end, 0])
+            action_high.append(bounds[start:end, 1])
+
+        action_unnorm_low = np.concatenate(action_low).astype(np.float32)
+        action_unnorm_high = np.concatenate(action_high).astype(np.float32)
+
+        actuator_low = []
+        actuator_high = []
+        for group in actuator_groups:
+            start = group * 8
+            end = start + 8
+            actuator_low.append(bounds[start:end, 0])
+            actuator_high.append(bounds[start:end, 1])
         
-        final_low = np.concatenate(low).astype(np.float32)
-        final_high = np.concatenate(high).astype(np.float32)
+        actuator_unnorm_low = np.concatenate(actuator_low).astype(np.float32)
+        actuator_unnorm_high = np.concatenate(actuator_high).astype(np.float32)
 
         # Store original action space bounds
-        self._original_action_space_low = final_low.copy()
-        self._original_action_space_high = final_high.copy()
+        self._original_action_space_low = action_unnorm_low.copy()
+        self._original_action_space_high = action_unnorm_high.copy()
+
+        # Store actuator range bounds
+        self._actuator_range_low = actuator_unnorm_low.copy()
+        self._actuator_range_high = actuator_unnorm_high.copy()
 
         if normalize_actions:
         # Action space for actuators
-            self.action_space = spaces.Box(low=-1.0, 
+            self.action_space = spaces.Box(low=0.0, 
                                         high=1.0,
+                                        shape=(len(actuator_unnorm_low),),
                                         dtype=np.float32)
         else:
-            self.action_space = spaces.Box(low=final_low,
-                                        high=final_high,
+            self.action_space = spaces.Box(low=action_unnorm_low,
+                                        high=action_unnorm_high,
+                                        shape=(len(action_unnorm_low),),
                                         dtype=np.float32)
         return self.action_space
     
@@ -182,23 +224,29 @@ class CustomMujocoEnv(gym.Env):
     
     def _step_mujoco_simulation(self, 
                                 action: NDArray[np.float32],
-                                n_frames: int = 4,
-                                active_groups: list[int] = [1]) -> None:
+                                frame_skip: int = 4,
+                                actuator_groups: list[int] = [1]) -> None:
         """
         Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs and constraints.
 
         :param action: Control inputs for the actuators
-        :param n_frames: Number of simulation frames to step
+        :param frame_skip: Number of simulation frames to step
         """
-        # Compute indices of active actuators
-        active = []
-        for group in active_groups:
+        actuator = []
+        for group in actuator_groups:
             start = group * 8
-            active.extend(range(start, start + 8))
+            actuator.extend(range(start, start + 8))
 
-        self.data.ctrl[active] = action
+        # Get single physics timestep
+        sim_dt = self.model.opt.timestep
 
-        mujoco.mj_step(self.model, self.data, nstep=n_frames)
+        # Step simulation frame_skip with PD control if enabled
+        for _ in range(frame_skip):
+            # Add smoothing if necessary
+            target_to_send = action.copy()
+
+            self.data.ctrl[actuator] = target_to_send
+            mujoco.mj_step(self.model, self.data)
 
         mujoco.mj_rnePostConstraint(self.model, self.data)
         
@@ -239,7 +287,7 @@ class CustomMujocoEnv(gym.Env):
         super().reset(seed=seed)
 
         mujoco.mj_resetData(self.model, self.data)
-
+        
         ob = self.reset_model()
         info = self._get_reset_info()
 
@@ -258,20 +306,14 @@ class CustomMujocoEnv(gym.Env):
 
     def do_simulation(self, 
                       action: NDArray[np.float32], 
-                      prev_action: NDArray[np.float32],
-                      n_frames: int,
-                      active_groups: list[int] = [1]) -> None:
+                      frame_skip: int = 4,
+                      actuator_groups: list[int] = [1]) -> None:
         """
-        Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs.
+        Step the MuJoCo simulation forward by `frame_skip` steps using the provided control inputs.
 
         :param action: Control inputs for the actuators
         """
-        alpha = 0.2
-        smoothed_action = prev_action + alpha * (action - prev_action)
-        smoothed_action = np.clip(smoothed_action, 
-                                      self.action_space.low, 
-                                      self.action_space.high)
-        self._step_mujoco_simulation(smoothed_action, n_frames, active_groups)
+        self._step_mujoco_simulation(action, frame_skip, actuator_groups)
 
     def state_vector(self) -> NDArray[np.float64]:
         """

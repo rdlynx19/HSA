@@ -103,7 +103,8 @@ class CustomMujocoEnv(gym.Env):
         if observation_space is not None:
             self.observation_space = observation_space
         # Initialize action space
-        self._set_action_space(active_groups=actuator_groups, 
+        self._set_action_space(actuator_groups=actuator_groups,
+                               action_group=action_group, 
                                normalize_actions=normalize_actions)
 
         # Store actuator control ranges for active groups
@@ -187,7 +188,7 @@ class CustomMujocoEnv(gym.Env):
         Set the action space of the environment.
 
         :param action_group: Group for action range selection
-        :param normalize_actions: Whether to normalize actions to [-1, 1]
+        :param normalize_actions: Whether to normalize actions to [0, 1]
         :return: Normalized action space
         """
         bounds = self.model.actuator_ctrlrange.copy().astype(np.float32)
@@ -223,7 +224,7 @@ class CustomMujocoEnv(gym.Env):
 
         if normalize_actions:
         # Action space for actuators
-            self.action_space = spaces.Box(low=-1.0, 
+            self.action_space = spaces.Box(low=0.0, 
                                         high=1.0,
                                         shape=(len(action_unnorm_low),),
                                         dtype=np.float32)

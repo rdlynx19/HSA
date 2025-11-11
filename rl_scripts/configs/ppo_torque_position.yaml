@@ -1,0 +1,35 @@
+env:
+  n_envs: 4
+  actuator_groups: [0]
+  action_group: [1]
+  frame_skip: 10
+  pos_gain: 3.0
+  vel_gain: 0.01
+  max_velocity: 15.0
+  max_episode_steps: 2000
+  forward_reward_weight: 1.0
+  ctrl_cost_weight: 0.01
+  contact_cost_weight: 0.0
+  yvel_cost_weight: 0.005
+  clip_torques: 100.0
+
+
+model:
+  policy: "MlpPolicy"
+  n_steps: 2048
+  batch_size: 64
+  learning_rate: 0.0003
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.1
+
+train:
+  total_timesteps: 1_000_000
+  log_dir: "./logs/ppo_hsa/"
+  run_name: "ppo_lamb2"
+  checkpoint_dir: "./checkpoints/"
+  checkpoint_freq: 100_000
+  resume: false
+
+  
