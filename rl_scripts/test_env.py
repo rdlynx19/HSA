@@ -1,5 +1,5 @@
 import numpy as np
-from hsa_gym.envs.hsa_v2 import HSAEnv
+from hsa_gym.envs.hsa_position import HSAEnv
 from gymnasium.wrappers import TimeLimit
 
 env = HSAEnv(render_mode="human",  actuator_groups=[1])

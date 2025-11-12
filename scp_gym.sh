@@ -1,0 +1,1 @@
+scp -r hsa_gym/ kjl5954@lamb.mech.northwestern.edu:/home/kjl5954/

@@ -6,14 +6,14 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecMonitor
 
 from gymnasium.wrappers import TimeLimit
 
-from hsa_gym.envs.hsa_v2 import HSAEnv
+from hsa_gym.envs.hsa_position import HSAEnv
 
 
 def make_env():
     """
     Helper function to create the environment
     """
-    env = HSAEnv(render_mode="human", actuator_groups=[1])
+    env = HSAEnv(render_mode="human", actuator_group=[1])
     env = TimeLimit(env, max_episode_steps=2000)
     return env
 
@@ -23,7 +23,7 @@ def main():
     env = make_env()
 
     # Load the pre-trained PPO model
-    model = PPO.load("ppo_lamb2_randomMove", env=env)
+    model = PPO.load("ppo_og_10M_final", env=env)
 
     num_episodes = 15
     for ep in range(num_episodes):

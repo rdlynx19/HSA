@@ -9,11 +9,11 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
 from stable_baselines3.common.callbacks import CheckpointCallback
 
-from hsa_gym.envs.hsa_v2 import HSAEnv
+from hsa_gym.envs.hsa_position import HSAEnv
 
+config_file = "./configs/ppo_position.yaml"
 
-
-def load_config(config_path: str = "./configs/ppo_hsa.yaml"):
+def load_config(config_path: str = config_file):
     """
     Load training configuration from a YAML file
     """
@@ -33,7 +33,7 @@ def get_latest_checkpoint(checkpoint_dir: str = "checkpoints/"):
 
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(script_dir, "./configs/ppo_hsa.yaml")
+    config_path = os.path.join(script_dir, config_file)
     config = load_config(config_path)
 
     checkpoint_dir = config["train"]["checkpoint_dir"]
@@ -48,7 +48,11 @@ def main():
         n_envs=config["env"]["n_envs"],
         vec_env_cls=SubprocVecEnv,
         env_kwargs={
-            "actuator_groups": config["env"]["actuator_groups"],
+            "actuator_group": config["env"]["actuator_group"],
+            "action_group": config["env"]["action_group"],
+            "forward_reward_weight": config["env"]["forward_reward_weight"],
+            "ctrl_cost_weight": config["env"]["ctrl_cost_weight"],
+            "smooth_positions": config["env"]["smooth_positions"],
         },
         wrapper_class=TimeLimit,
         wrapper_kwargs={"max_episode_steps": config["env"]["max_episode_steps"]},
@@ -63,7 +67,7 @@ def main():
         latest = get_latest_checkpoint(checkpoint_dir)
         if latest:
             print(f"[Resume] Loading latest checkpoint: {latest}")
-            model = PPO.load(latest, env=env, device='auto')
+            model = PPO.load(latest, env=env, device='cpu')
         else:
             print(f"[Resume] WARNING: No checkpoint found in {checkpoint_dir}, starting fresh training.")
 
@@ -79,7 +83,8 @@ def main():
             gamma=config["model"]["gamma"],
             ent_coef=config["model"]["ent_coef"],
             clip_range=config["model"]["clip_range"],
-            tensorboard_log=config["train"]["log_dir"]
+            tensorboard_log=config["train"]["log_dir"],
+            device='cpu'
         )
 
     checkpoint_cb = CheckpointCallback(
@@ -92,7 +97,7 @@ def main():
     model.learn(
         total_timesteps=config["train"]["total_timesteps"],
         tb_log_name=config["train"]["run_name"],
-        callback=checkpoint_cb
+        callback=checkpoint_cb,
     )
 
     # Save the trained model
