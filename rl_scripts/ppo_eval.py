@@ -13,7 +13,7 @@ def make_env():
     """
     Helper function to create the environment
     """
-    env = HSAEnv(render_mode="human", actuator_group=[1])
+    env = HSAEnv(render_mode="human", actuator_group=[1], action_group=[1],smooth_positions=True)
     env = TimeLimit(env, max_episode_steps=2000)
     return env
 
@@ -23,7 +23,7 @@ def main():
     env = make_env()
 
     # Load the pre-trained PPO model
-    model = PPO.load("ppo_og_10M_final", env=env)
+    model = PPO.load("model_2000000_steps.zip", env=env)
 
     num_episodes = 15
     for ep in range(num_episodes):

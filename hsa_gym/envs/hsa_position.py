@@ -24,11 +24,13 @@ class HSAEnv(CustomMujocoEnv):
                  smooth_positions: bool = True,
                  clip_actions: float = 1.0,
                  contact_cost_weight: float = 1e-4,
+                 yvel_cost_weight: float = 1.0,
                  **kwargs):
 
         self._forward_reward_weight = forward_reward_weight
         self._ctrl_cost_weight = ctrl_cost_weight
         self._contact_cost_weight = contact_cost_weight
+        self._yvel_cost_weight = yvel_cost_weight
 
         self._actuator_group = actuator_group
         self._clip_actions = clip_actions
@@ -137,7 +139,7 @@ class HSAEnv(CustomMujocoEnv):
         foot_geom_names = ["cylinder3a_con", "cylinder3c_con",
                            "cylinder4a_con", "cylinder4c_con"]
         total_excessive_force = 0.0
-        force_threshold = 30.0  # N Threshold for excessive force
+        force_threshold = 50.0  # N Threshold for excessive force
         for geom_name in foot_geom_names:
             try:
                 excessive_force = self.get_contact_force(geom_name, 
@@ -191,7 +193,7 @@ class HSAEnv(CustomMujocoEnv):
         x_velocity, y_velocity = xy_velocity
         
         observation = self._get_obs()
-        reward, reward_info = self._get_reward(action, x_velocity)
+        reward, reward_info = self._get_reward(action, x_velocity, y_velocity)
         terminated = ((self.get_body_com("block_a")[2] > 0.4) or 
                       (self.get_body_com("block_b")[2] > 0.4) or
                       (np.isnan(observation).any()) or
@@ -219,6 +221,7 @@ class HSAEnv(CustomMujocoEnv):
     def _get_reward(self, 
                     action: NDArray[np.float32],
                     x_velocity: float = 0.0,
+                    y_velocity: float = 0.0,
                     ) -> tuple[float, dict[str, float]]:
         """
         Compute the reward for the current step.
@@ -227,14 +230,24 @@ class HSAEnv(CustomMujocoEnv):
         :return: A tuple containing the reward and a dictionary of reward components
         """
         # Reward is based on velocity in x direction
-        forward_reward = self._forward_reward_weight * x_velocity
+        forward_reward = (self._forward_reward_weight) * (x_velocity)
+
+        # Y velocity penalty
+        y_penalty = self._yvel_cost_weight * abs(y_velocity)
 
         # Control cost penalty
         ctrl_cost = self.control_cost(action)
-        reward = forward_reward - ctrl_cost
+
+        # Contact cost penalty
+        contact_cost = self.contact_cost()
+
+        costs = ctrl_cost + contact_cost + y_penalty
+        reward = forward_reward - costs
         reward_info = {
             "reward_forward": forward_reward,
             "reward_ctrl_cost": -ctrl_cost,
+            "reward_contact_cost": -contact_cost,
+            "reward_y_penalty": -y_penalty,
         }
     
         return reward, reward_info

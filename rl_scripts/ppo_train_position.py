@@ -1,4 +1,4 @@
-import yaml, os, glob
+import yaml, os, glob, shutil
 
 import gymnasium as gym
 
@@ -36,11 +36,17 @@ def main():
     config_path = os.path.join(script_dir, config_file)
     config = load_config(config_path)
 
-    checkpoint_dir = config["train"]["checkpoint_dir"]
+    base_checkpoint_dir = config["train"]["checkpoint_dir"]
+    run_name = config["train"]["run_name"]
+    checkpoint_dir = os.path.join(base_checkpoint_dir, run_name)
     checkpoint_freq = config["train"]["checkpoint_freq"]
     resume = config["train"].get("resume", False)
 
     os.makedirs(checkpoint_dir, exist_ok=True)
+
+    # Save a copy of the config file to the checkpoint directory
+    shutil.copy(config_path, os.path.join(checkpoint_dir, "used_config.yaml"))
+    print(f"[Config] Training configuration saved to {os.path.join(checkpoint_dir, 'used_config.yaml')}")
     # Create a vectorized environment with 4 parallel environments
     # Position control only
     env = make_vec_env(
@@ -48,11 +54,15 @@ def main():
         n_envs=config["env"]["n_envs"],
         vec_env_cls=SubprocVecEnv,
         env_kwargs={
+            "xml_file": config["env"]["xml_file"],
             "actuator_group": config["env"]["actuator_group"],
             "action_group": config["env"]["action_group"],
             "forward_reward_weight": config["env"]["forward_reward_weight"],
             "ctrl_cost_weight": config["env"]["ctrl_cost_weight"],
+            "contact_cost_weight": config["env"]["contact_cost_weight"],
             "smooth_positions": config["env"]["smooth_positions"],
+            "frame_skip": config["env"]["frame_skip"],
+            "yvel_cost_weight": config["env"]["yvel_cost_weight"]
         },
         wrapper_class=TimeLimit,
         wrapper_kwargs={"max_episode_steps": config["env"]["max_episode_steps"]},
