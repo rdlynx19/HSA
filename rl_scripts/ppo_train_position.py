@@ -1,4 +1,4 @@
-import yaml, os, glob, shutil
+import yaml, os, glob, shutil, re
 
 import gymnasium as gym
 
@@ -26,11 +26,30 @@ def get_latest_checkpoint(checkpoint_dir: str = "checkpoints/"):
     """
     Get the latest checkpoint file from the checkpoint directory
     """
-    checkpoint_files = glob.glob(os.path.join(checkpoint_dir, "model_step_*.zip"))
+    checkpoint_files = glob.glob(os.path.join(checkpoint_dir, "model_*_steps.zip"))
     if not checkpoint_files:
         return None
-    checkpoint_files.sort(key=lambda x: int(x.split('_')[-1].split('.')[0]))
+    
+    # Filter out the final model if it exists
+    checkpoint_files = [f for f in checkpoint_files if 'final' not in f.lower()]
+    if not checkpoint_files:
+        return None
+
+    checkpoint_files.sort(key=lambda x: extract_step_number(x))
     return checkpoint_files[-1]
+
+def extract_step_number(checkpoint_path: str) -> int:
+    """
+    Extract the step number from a checkpoint filename
+    """
+    filename = os.path.basename(checkpoint_path)
+    # Find all sequences of digits
+    numbers = re.findall(r'\d+', filename)
+
+    if not numbers:
+        raise ValueError(f"Could not extract step number from checkpoint: {checkpoint_path}")
+    
+    return int(max(numbers, key=int))
 
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -69,6 +88,7 @@ def main():
             "frame_skip": config["env"]["frame_skip"],
             "yvel_cost_weight": config["env"]["yvel_cost_weight"],
             "constraint_cost_weight": config["env"]["constraint_cost_weight"],
+            "acc_cost_weight": config["env"]["acc_cost_weight"],
             "max_increment": config["env"]["max_increment"]
         },
         wrapper_class=TimeLimit,
@@ -80,13 +100,26 @@ def main():
 
     # Load model if resuming from checkpoint
     model = None
+    trained_steps = 0
+
     if resume:
         latest = get_latest_checkpoint(checkpoint_dir)
         if latest:
             print(f"[Resume] Loading latest checkpoint: {latest}")
-            model = PPO.load(latest, env=env, device='cpu')
+
+            try:
+                trained_steps = extract_step_number(latest)
+                print(f"[Resume] Model has been trained for {trained_steps} steps.")
+            except ValueError as e:
+                print(f"[Resume] Warning: {e}. Assuming 0 trained steps.")
+                resume = False
+
+            if resume:
+                print(f"[Resume] Loading model ...")
+                model = PPO.load(latest, env=env, device='cpu')
         else:
             print(f"[Resume] WARNING: No checkpoint found in {checkpoint_dir}, starting fresh training.")
+            resume = False
 
     if model is None: 
         # Initialize the PPO model
@@ -103,6 +136,24 @@ def main():
             tensorboard_log=config["train"]["log_dir"],
             device='cpu'
         )
+
+    # Calculate remaining timesteps
+    total_timesteps = config["train"]["total_timesteps"]
+    remaining_timesteps = total_timesteps - trained_steps
+
+    if remaining_timesteps <= 0:
+        print(f"[Info] Model has already been trained for {trained_steps} steps.")
+        print(f"[Info] Desired total timesteps: {total_timesteps}")
+        print(f"[Info] No further training needed.")
+        return
+    
+    print(f"\n{'='*60}")
+    print(f"TRAINING PLAN")
+    print(f"{'='*60}")
+    print(f"Already trained: {trained_steps:,} steps")
+    print(f"Total desired:   {total_timesteps:,} steps")
+    print(f"Will train for:  {remaining_timesteps:,} additional steps")
+    print(f"{'='*60}\n")
 
     checkpoint_cb = CheckpointCallback(
         # Divide by number of envs because SB3 counts steps across all envs

@@ -25,7 +25,8 @@ class HSAEnv(CustomMujocoEnv):
                  clip_actions: float = 1.0,
                  contact_cost_weight: float = 1e-4,
                  yvel_cost_weight: float = 1.0,
-                 constraint_cost_weight: float = 1.0,
+                 constraint_cost_weight: float = 1e-2,
+                 acc_cost_weight: float = 1e-2,
                  max_increment: float = 3.14,
                  **kwargs):
 
@@ -34,6 +35,7 @@ class HSAEnv(CustomMujocoEnv):
         self._contact_cost_weight = contact_cost_weight
         self._yvel_cost_weight = yvel_cost_weight
         self._constraint_cost_weight = constraint_cost_weight
+        self._acc_cost_weight = acc_cost_weight
 
         self._actuator_group = actuator_group
         self._clip_actions = clip_actions
@@ -108,6 +110,12 @@ class HSAEnv(CustomMujocoEnv):
                                     dtype=np.float32)
         self._prev_scaled_action = np.zeros(self.action_space.shape[0], 
                                           dtype=np.float32)
+        
+        # Previous velocity for acceleration cost
+        self._prev_joint_velocities = np.zeros(
+            len(self._actuated_qvel_indices), 
+            dtype=np.float32
+        )
 
     def _scale_action(self, 
                       norm_action: NDArray[np.float32]) -> NDArray[np.float32]:
@@ -121,6 +129,21 @@ class HSAEnv(CustomMujocoEnv):
         scaled_action = norm_action * self._max_increment
         
         return scaled_action
+    
+    def acceleration_cost(self) -> float:
+        """
+        Penalize large accelerations (changes in velocity).
+        """
+        joint_velocities = self.data.qvel[self._actuated_qvel_indices]
+    
+        # Compute acceleration as change in velocity
+        joint_acc = (joint_velocities - self._prev_joint_velocities) / self.dt
+        # Acceleration cost
+        acc_cost = self._acc_cost_weight * np.sum(np.square(joint_acc))
+        # Update previous velocities
+        self._prev_joint_velocities = joint_velocities.copy()
+
+        return acc_cost
 
     def constraint_cost(self,
                         diff_margin: float = 0.1,
@@ -345,6 +368,11 @@ class HSAEnv(CustomMujocoEnv):
         
         self._prev_scaled_action = np.zeros(self.action_space.shape[0], 
                                           dtype=np.float32)
+        
+        self._prev_joint_velocities = np.zeros(
+            len(self._actuated_qvel_indices), 
+            dtype=np.float32
+        )
 
         observation = self._get_obs()
         return observation
