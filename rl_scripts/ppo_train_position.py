@@ -9,9 +9,10 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
 from stable_baselines3.common.callbacks import CheckpointCallback
 
-from hsa_gym.envs.hsa_position import HSAEnv
+from hsa_gym.envs.hsa_constrained import HSAEnv
 
 config_file = "./configs/ppo_position.yaml"
+xml_file = "../hsa_gym/envs/assets/hsaModel.xml"
 
 def load_config(config_path: str = config_file):
     """
@@ -47,6 +48,10 @@ def main():
     # Save a copy of the config file to the checkpoint directory
     shutil.copy(config_path, os.path.join(checkpoint_dir, "used_config.yaml"))
     print(f"[Config] Training configuration saved to {os.path.join(checkpoint_dir, 'used_config.yaml')}")
+    
+    xml_path = os.path.join(script_dir, xml_file)
+    shutil.copy(xml_path, os.path.join(checkpoint_dir, "used_model.xml"))
+    print(f"[Config] XML model file saved to {os.path.join(checkpoint_dir, 'used_model.xml')}")
     # Create a vectorized environment with 4 parallel environments
     # Position control only
     env = make_vec_env(
@@ -62,7 +67,9 @@ def main():
             "contact_cost_weight": config["env"]["contact_cost_weight"],
             "smooth_positions": config["env"]["smooth_positions"],
             "frame_skip": config["env"]["frame_skip"],
-            "yvel_cost_weight": config["env"]["yvel_cost_weight"]
+            "yvel_cost_weight": config["env"]["yvel_cost_weight"],
+            "constraint_cost_weight": config["env"]["constraint_cost_weight"],
+            "max_increment": config["env"]["max_increment"]
         },
         wrapper_class=TimeLimit,
         wrapper_kwargs={"max_episode_steps": config["env"]["max_episode_steps"]},

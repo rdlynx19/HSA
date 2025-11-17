@@ -4,11 +4,13 @@ env:
   frame_skip: 20
   actuator_group: [1]
   action_group: [1]
-  forward_reward_weight: 15.0
+  forward_reward_weight: 2.0
   ctrl_cost_weight: 0.0005
-  contact_cost_weight: 0.0001
-  yvel_cost_weight: 0.05
+  contact_cost_weight: 0.001
+  yvel_cost_weight: 0.005
+  constraint_cost_weight: 0.1
   smooth_positions: true
+  max_increment: 3.14
   max_episode_steps: 2000
 
 model:
@@ -19,13 +21,13 @@ model:
   gamma: 0.99
   gae_lambda: 0.95
   clip_range: 0.2
-  ent_coef: 0.05
+  ent_coef: 0.01
 
 train:
   total_timesteps: 10_000_000
-  log_dir: "./logs/ppo_og/"
-  run_name: "ppo_model_10M"
-  checkpoint_dir: "./checkpoints_model/"
+  log_dir: "./logs/constrained/"
+  run_name: "ppo_small_step_10M"
+  checkpoint_dir: "./checkpoints/"
   checkpoint_freq: 500_000
   resume: false
 
