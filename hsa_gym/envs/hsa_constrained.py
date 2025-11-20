@@ -27,6 +27,8 @@ class HSAEnv(CustomMujocoEnv):
                  yvel_cost_weight: float = 1.0,
                  constraint_cost_weight: float = 1e-2,
                  acc_cost_weight: float = 1e-2,
+                 early_termination_penalty: float = 50.0,
+                 alive_bonus: float = 0.1,
                  max_increment: float = 3.14,
                  **kwargs):
 
@@ -36,11 +38,16 @@ class HSAEnv(CustomMujocoEnv):
         self._yvel_cost_weight = yvel_cost_weight
         self._constraint_cost_weight = constraint_cost_weight
         self._acc_cost_weight = acc_cost_weight
+        self._early_termination_penalty = early_termination_penalty
+        self._alive_bonus = alive_bonus 
 
         self._actuator_group = actuator_group
         self._clip_actions = clip_actions
 
         self._max_increment = max_increment
+
+        # Step Count
+        self._step_count = 0
 
         CustomMujocoEnv.__init__(self,
                                  xml_file,
@@ -138,8 +145,13 @@ class HSAEnv(CustomMujocoEnv):
     
         # Compute acceleration as change in velocity
         joint_acc = (joint_velocities - self._prev_joint_velocities) / self.dt
+
+        # Clip to prevent explosion
+        joint_acc = np.clip(joint_acc, -50.0, 50.0)
         # Acceleration cost
         acc_cost = self._acc_cost_weight * np.sum(np.square(joint_acc))
+        # Cap cost
+        acc_cost = min(acc_cost, 5.0)
         # Update previous velocities
         self._prev_joint_velocities = joint_velocities.copy()
 
@@ -192,15 +204,29 @@ class HSAEnv(CustomMujocoEnv):
         ]
 
         for a_name, c_name, pair_name in pairs:
-            diff = abs(joint_positions[a_name] - joint_positions[c_name]) 
+            pos_a = joint_positions[a_name]
+            pos_c = joint_positions[c_name]
+
+            # Compute angle difference with proper wrapping
+            # this ensures the difference is within [-pi, pi]
+            raw_diff = pos_a - pos_c
+            wrapped_diff = np.arctan2(np.sin(raw_diff), np.cos(raw_diff))
+
+            # Get absolute difference
+            diff = abs(wrapped_diff)
+            # Now diff is guaranteed to be in [0, pi]
+            # Only penalize if difference exceeds threshold
             if diff > diff_threshold:
                 # Quadratic penalty that grows as we approach pi
                 proximity = (diff - diff_threshold) / diff_margin
                 proximity = np.clip(proximity, 0.0, 1.0)
 
-                # Quadratic growth: penalty = -k * proximity^2
+                # Quadratic growth: penalty = k * proximity^2
                 pair_penalty = penalty_factor * (proximity ** 2)
                 constraint_cost += pair_penalty
+        
+        # Cap the max constraint to avoid excessive penalties
+        constraint_cost = min(constraint_cost, 10.0) 
 
         # Handedness constraint is missing for now
         # Hoping model learns it by using the difference constraint alone
@@ -223,6 +249,7 @@ class HSAEnv(CustomMujocoEnv):
                 pass
         
         contact_cost = self._contact_cost_weight * total_excessive_force
+        contact_cost = min(contact_cost, 5.0)  # Cap the contact cost
         return contact_cost
 
 
@@ -241,6 +268,7 @@ class HSAEnv(CustomMujocoEnv):
         control_cost = self._ctrl_cost_weight * np.sum(np.square(action_diff))
         self._prev_action = action.copy()
 
+        control_cost = min(control_cost, 5.0)  # Cap the control cost
         return control_cost
 
     def step(self, 
@@ -252,6 +280,7 @@ class HSAEnv(CustomMujocoEnv):
         :param action: Action dictionary containing motor commands 
         :return: A tuple containing the observation, reward, termination status, truncation status, and info dictionary
         """
+        self._step_count += 1
         # Scale action
         scaled_action = self._scale_action(action)
 
@@ -265,6 +294,8 @@ class HSAEnv(CustomMujocoEnv):
         # Calculate velocity
         xy_velocity = (current_position - previous_position) / self.dt
         x_velocity, y_velocity = xy_velocity
+        x_velocity = np.clip(x_velocity, -10.0, 10.0)
+        y_velocity = np.clip(y_velocity, -10.0, 10.0)
         
         observation = self._get_obs()
         reward, reward_info = self._get_reward(action, x_velocity, y_velocity)
@@ -272,7 +303,19 @@ class HSAEnv(CustomMujocoEnv):
                       (self.get_body_com("block_b")[2] > 0.4) or
                       (np.isnan(observation).any()) or
                        (np.isinf(observation).any()))
+
         truncated = False
+        # Scale early termination penalty
+        if terminated and not truncated:
+            steps_lost = 2000 - self._step_count
+            early_term_pen = (self._early_termination_penalty) * steps_lost
+        else: 
+            early_term_pen = 0.0
+
+        alive_bonus = (
+            self._alive_bonus if not (terminated or truncated) else 0.0
+        )
+        reward = reward + alive_bonus - early_term_pen
 
         actual_position = self.data.qpos[self._actuated_qpos_indices].copy()
 
@@ -303,11 +346,13 @@ class HSAEnv(CustomMujocoEnv):
         :param action: Action dictionary containing motor commands 
         :return: A tuple containing the reward and a dictionary of reward components
         """
+        total_speed = np.sqrt(x_velocity ** 2 + y_velocity ** 2)
         # Reward is based on velocity in x direction
-        forward_reward = (self._forward_reward_weight) * (x_velocity)
+        forward_reward = (self._forward_reward_weight) * x_velocity
 
         # Y velocity penalty
-        y_penalty = self._yvel_cost_weight * abs(y_velocity)
+        y_penalty = self._yvel_cost_weight * abs(y_velocity ** 2)
+        y_penalty = min(y_penalty, 10.0)
 
         # Control cost penalty
         ctrl_cost = self.control_cost(action)
@@ -318,7 +363,12 @@ class HSAEnv(CustomMujocoEnv):
         # Constraint cost penalty
         constraint_cost = self._constraint_cost_weight * self.constraint_cost()
 
-        costs = ctrl_cost + contact_cost + y_penalty + constraint_cost
+        # Acceleration cost penalty
+        acc_cost = self.acceleration_cost()
+
+        costs = (
+            ctrl_cost + contact_cost + y_penalty + constraint_cost + acc_cost
+            )
         reward = forward_reward - costs
         reward_info = {
             "reward_forward": forward_reward,
@@ -326,6 +376,7 @@ class HSAEnv(CustomMujocoEnv):
             "reward_contact_cost": -contact_cost,
             "reward_y_penalty": -y_penalty,
             "reward_constraint_cost": -constraint_cost,
+            "reward_acc_cost": -acc_cost,
             "reward_total_costs": -costs
         }
     
@@ -362,6 +413,7 @@ class HSAEnv(CustomMujocoEnv):
         """
         self.set_state(self.init_qpos, self.init_qvel)
         
+        self._step_count = 0
         # Initialize previous action at reset
         self._prev_action = np.zeros(self.action_space.shape[0], 
                                     dtype=np.float32)

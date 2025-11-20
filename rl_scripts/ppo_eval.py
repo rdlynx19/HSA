@@ -45,8 +45,8 @@ def make_env(config, render_mode="human"):
 def main():
     # Path to your checkpoint directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_constrained_10M")
-    model_path = os.path.join(checkpoint_dir, "model_8500000_steps")
+    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_acc_10M")
+    model_path = os.path.join(checkpoint_dir, "ppo_acc_10M_final")
     
     # Load the configuration used during training
     print(f"Loading config from {checkpoint_dir}")

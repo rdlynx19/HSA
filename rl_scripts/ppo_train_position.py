@@ -101,6 +101,7 @@ def main():
     # Load model if resuming from checkpoint
     model = None
     trained_steps = 0
+    reset_timesteps = True # Default for fresh training
 
     if resume:
         latest = get_latest_checkpoint(checkpoint_dir)
@@ -117,6 +118,7 @@ def main():
             if resume:
                 print(f"[Resume] Loading model ...")
                 model = PPO.load(latest, env=env, device='cpu')
+                reset_timesteps = False # Keep the original timestep count
         else:
             print(f"[Resume] WARNING: No checkpoint found in {checkpoint_dir}, starting fresh training.")
             resume = False
@@ -139,21 +141,37 @@ def main():
 
     # Calculate remaining timesteps
     total_timesteps = config["train"]["total_timesteps"]
-    remaining_timesteps = total_timesteps - trained_steps
+    if resume and trained_steps > 0:
+        remaining_timesteps = total_timesteps - trained_steps
 
-    if remaining_timesteps <= 0:
-        print(f"[Info] Model has already been trained for {trained_steps} steps.")
-        print(f"[Info] Desired total timesteps: {total_timesteps}")
-        print(f"[Info] No further training needed.")
-        return
+        if remaining_timesteps <= 0:
+            print(f"[Info] Model has already been trained for {trained_steps} steps.")
+            print(f"[Info] Desired total timesteps: {total_timesteps}")
+            print(f"[Info] No further training needed.")
+            return
     
-    print(f"\n{'='*60}")
-    print(f"TRAINING PLAN")
-    print(f"{'='*60}")
-    print(f"Already trained: {trained_steps:,} steps")
-    print(f"Total desired:   {total_timesteps:,} steps")
-    print(f"Will train for:  {remaining_timesteps:,} additional steps")
-    print(f"{'='*60}\n")
+        print(f"\n{'='*60}")
+        print(f"RESUMING TRAINING")
+        print(f"{'='*60}")
+        print(f"Already trained:     {trained_steps:,} steps")
+        print(f"Total desired:       {total_timesteps:,} steps")
+        print(f"Will train for:      {remaining_timesteps:,} additional steps")
+        print(f"Reset timesteps:     {reset_timesteps}")
+        print(f"Next checkpoint at:  {trained_steps + checkpoint_freq:,} steps")
+        print(f"{'='*60}\n")
+
+        timesteps_to_train = remaining_timesteps
+    else:
+        print(f"\n{'='*60}")
+        print(f"STARTING FRESH TRAINING")
+        print(f"{'='*60}")
+        print(f"Will train for:      {total_timesteps:,} steps")
+        print(f"Reset timesteps:     {reset_timesteps}")
+        print(f"First checkpoint at: {checkpoint_freq:,} steps")
+        print(f"{'='*60}\n")
+
+        timesteps_to_train = total_timesteps
+        
 
     checkpoint_cb = CheckpointCallback(
         # Divide by number of envs because SB3 counts steps across all envs
@@ -163,15 +181,17 @@ def main():
     )
     # Train the Model for a few timesteps
     model.learn(
-        total_timesteps=config["train"]["total_timesteps"],
+        total_timesteps=timesteps_to_train,
         tb_log_name=config["train"]["run_name"],
         callback=checkpoint_cb,
+        reset_num_timesteps=reset_timesteps
     )
 
     # Save the trained model
-
+    final_steps = trained_steps + timesteps_to_train
+    print(f"[Info] Training complete. Total trained steps: {final_steps:,}")
     model.save(os.path.join(checkpoint_dir, 
-                            f"{config['train']['run_name']}_final"))
+                            f"{config['train']['run_name']}_final_{final_steps}_steps"))
 
 if __name__ == "__main__":
     main()
