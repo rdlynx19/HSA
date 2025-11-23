@@ -2,7 +2,7 @@ import numpy as np
 from hsa_gym.envs.hsa_constrained import HSAEnv
 from gymnasium.wrappers import TimeLimit
 
-env = HSAEnv(render_mode="human",  actuator_group=[1])
+env = HSAEnv(xml_file="hsaTerrainModel.xml", render_mode="human",  actuator_group=[1])
 env = TimeLimit(env, max_episode_steps=500)
 
 obs, info = env.reset()

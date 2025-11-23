@@ -6,13 +6,14 @@ from gymnasium.wrappers import TimeLimit
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
-from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor, VecNormalize
+from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback, CallbackList
+
 
 from hsa_gym.envs.hsa_constrained import HSAEnv
 
 config_file = "./configs/ppo_position.yaml"
-xml_file = "../hsa_gym/envs/assets/hsaModel.xml"
+xml_file = "../hsa_gym/envs/assets/hsaTerrainModel.xml"
 
 def load_config(config_path: str = config_file):
     """
@@ -38,6 +39,17 @@ def get_latest_checkpoint(checkpoint_dir: str = "checkpoints/"):
     checkpoint_files.sort(key=lambda x: extract_step_number(x))
     return checkpoint_files[-1]
 
+def get_latest_vecnormalize(checkpoint_dir: str = "checkpoints/"):
+    """
+    Get the latest VecNormalize file from the checkpoint directory
+    """
+    vecnorm_files = glob.glob(os.path.join(checkpoint_dir, "vec_normalize_*_steps.pkl"))
+    if not vecnorm_files:
+        return None
+    
+    vecnorm_files.sort(key=lambda x: extract_step_number(x))
+    return vecnorm_files[-1]
+
 def extract_step_number(checkpoint_path: str) -> int:
     """
     Extract the step number from a checkpoint filename
@@ -50,6 +62,60 @@ def extract_step_number(checkpoint_path: str) -> int:
         raise ValueError(f"Could not extract step number from checkpoint: {checkpoint_path}")
     
     return int(max(numbers, key=int))
+
+class RewardComponentLogger(BaseCallback):
+    """
+    Custom callback to log individual reward components during training
+    """
+    def __init__(self, verbose=0):
+        super().__init__(verbose)
+
+    def _on_step(self) -> bool:
+        # Access the infos from the vectorized environment
+        infos = self.locals.get('infos', [])
+        for info in infos:
+            if 'reward_forward' in info:
+                self.logger.record('reward/forward', info['reward_forward'])
+            if 'reward_ctrl_cost' in info:
+                self.logger.record('reward/ctrl_cost', info['reward_ctrl_cost'])
+            if 'reward_contact_cost' in info:
+                self.logger.record('reward/contact_cost', info['reward_contact_cost'])
+            if 'reward_lateral' in info:
+                self.logger.record('reward/lateral', info['reward_lateral'])
+            if 'reward_constraint_cost' in info:
+                self.logger.record('reward/constraint_cost', info['reward_constraint_cost'])
+            if 'reward_constraint_bonus' in info:
+                self.logger.record('reward/constraint_bonus', info['reward_constraint_bonus'])
+            if 'reward_acc_cost' in info:
+                self.logger.record('reward/acc_cost', info['reward_acc_cost'])
+            if 'reward_joint_vel_cost' in info:
+                self.logger.record('reward/joint_vel_cost', info['reward_joint_vel_cost'])
+            if 'reward_distance' in info:
+                self.logger.record('reward/distance', info['reward_distance'])
+            if 'reward_total_costs' in info:
+                self.logger.record('reward/total_costs', info['reward_total_costs'])
+        return True
+
+class SaveVecNormalizeCallback(BaseCallback):
+    """
+    Custom callback to save the VecNormalize stats alongside model checkpoints
+    """
+    def __init__(self, save_freq: int, save_path: str, name_prefix: str = "vec_normalize", verbose=0):
+        super().__init__(verbose)
+        self.save_freq = save_freq
+        self.save_path = save_path
+        self.name_prefix = name_prefix
+
+    def _on_step(self) -> bool:
+        if self.n_calls % self.save_freq == 0:
+            if isinstance(self.training_env, VecNormalize):
+                # Save with same timestep number as model checkpoint
+                path = os.path.join(self.save_path, f"{self.name_prefix}_{self.num_timesteps}_steps.pkl")
+                self.training_env.save(path)
+                if self.verbose > 0:
+                    print(f"[VecNormalize] Saved to {path} at step {self.num_timesteps}")
+        return True
+
 
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -89,7 +155,14 @@ def main():
             "yvel_cost_weight": config["env"]["yvel_cost_weight"],
             "constraint_cost_weight": config["env"]["constraint_cost_weight"],
             "acc_cost_weight": config["env"]["acc_cost_weight"],
-            "max_increment": config["env"]["max_increment"]
+            "joint_vel_cost_weight": config["env"]["joint_vel_cost_weight"],
+            "max_increment": config["env"]["max_increment"],
+            "early_termination_penalty": config["env"]["early_termination_penalty"],
+            "alive_bonus": config["env"]["alive_bonus"],
+            "enable_terrain": config["env"]["enable_terrain"],
+            "terrain_type": config["env"]["terrain_type"],
+            "goal_position": config["env"]["goal_position"],
+            "distance_reward_weight": config["env"]["distance_reward_weight"]
         },
         wrapper_class=TimeLimit,
         wrapper_kwargs={"max_episode_steps": config["env"]["max_episode_steps"]},
@@ -98,6 +171,18 @@ def main():
     # Keep track of episode statistics
     env = VecMonitor(env)
 
+    # Normalize observations and rewards
+    env = VecNormalize(
+        env,
+        norm_obs=True,
+        norm_reward=True,
+        clip_obs=10.0,
+        clip_reward=10.0,
+        gamma=config["model"]["gamma"],
+        epsilon=1e-8,
+        norm_obs_keys=None
+    )
+
     # Load model if resuming from checkpoint
     model = None
     trained_steps = 0
@@ -105,20 +190,27 @@ def main():
 
     if resume:
         latest = get_latest_checkpoint(checkpoint_dir)
+        latest_vecnorm = get_latest_vecnormalize(checkpoint_dir)
         if latest:
             print(f"[Resume] Loading latest checkpoint: {latest}")
 
             try:
                 trained_steps = extract_step_number(latest)
                 print(f"[Resume] Model has been trained for {trained_steps} steps.")
-            except ValueError as e:
-                print(f"[Resume] Warning: {e}. Assuming 0 trained steps.")
-                resume = False
+                if latest_vecnorm:
+                    print(f"[Resume] Loading VecNormalize stats from: {latest_vecnorm}")
+                    env = VecNormalize.load(latest_vecnorm, env)
+                else:
+                    print(f"[Resume] WARNING: No VecNormalize stats found!")
+                    print(f"[Resume] Starting with fresh normalization stats.")
 
-            if resume:
                 print(f"[Resume] Loading model ...")
                 model = PPO.load(latest, env=env, device='cpu')
                 reset_timesteps = False # Keep the original timestep count
+
+            except ValueError as e:
+                print(f"[Resume] Warning: {e}. Assuming 0 trained steps.")
+                resume = False
         else:
             print(f"[Resume] WARNING: No checkpoint found in {checkpoint_dir}, starting fresh training.")
             resume = False
@@ -179,11 +271,21 @@ def main():
         save_path=checkpoint_dir,
         name_prefix="model"
     )
+
+    vecnorm_cb = SaveVecNormalizeCallback(
+        save_freq=checkpoint_freq // config["env"]["n_envs"],
+        save_path=checkpoint_dir,
+        name_prefix="vec_normalize",
+        verbose=1
+    )
+
+    reward_cb = RewardComponentLogger()
+    callbacks = CallbackList([checkpoint_cb, reward_cb, vecnorm_cb])
     # Train the Model for a few timesteps
     model.learn(
         total_timesteps=timesteps_to_train,
         tb_log_name=config["train"]["run_name"],
-        callback=checkpoint_cb,
+        callback=callbacks,
         reset_num_timesteps=reset_timesteps
     )
 
@@ -192,6 +294,14 @@ def main():
     print(f"[Info] Training complete. Total trained steps: {final_steps:,}")
     model.save(os.path.join(checkpoint_dir, 
                             f"{config['train']['run_name']}_final_{final_steps}_steps"))
+    
+    # Save the VecNormalize stats
+    vecnorm_path = os.path.join(
+        checkpoint_dir, 
+        "vec_normalize_final.pkl"
+    )
+    env.save(vecnorm_path)
+    print(f"[Info] VecNormalize stats saved to {vecnorm_path}")
 
 if __name__ == "__main__":
     main()

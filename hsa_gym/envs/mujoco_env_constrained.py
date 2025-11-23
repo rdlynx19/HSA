@@ -7,6 +7,8 @@ import gymnasium as gym
 from gymnasium import error, spaces
 from gymnasium.spaces import Space
 
+from ..utils import terrain_generators as utils
+
 try:
     import mujoco
 except ImportError as e:
@@ -51,6 +53,8 @@ class CustomMujocoEnv(gym.Env):
         actuator_group: list[int] = [1],
         action_group: list[int] = [1],
         smooth_positions: bool = True,
+        enable_terrain: bool = False,
+        terrain_type: str = "craters",
     ):
         """
         Base abstract class for MuJoCo based environments.
@@ -68,6 +72,9 @@ class CustomMujocoEnv(gym.Env):
         :param visual_options: render flag options
         :param actuator_group: List of actuator group to enable
         :param action_group: List of actuator group to include in action space
+        :param smooth_positions: Whether to smooth actuator position changes over frames
+        :param enable_terrain: Whether to enable terrain generation
+        :param terrain_type: Type of terrain to generate
         """
 
         self.fullpath = expand_model_path(model_path)
@@ -113,6 +120,8 @@ class CustomMujocoEnv(gym.Env):
         )
 
         self._smooth_positions = smooth_positions
+        self.enable_terrain = enable_terrain
+        self._terrain_type = terrain_type
 
         self.unnorm_action_space_bounds = np.column_stack([
             self._action_unnorm_low.copy(),
@@ -165,8 +174,8 @@ class CustomMujocoEnv(gym.Env):
         
         self._actuator_low, self._actuator_high = self._get_range_bounds(actuator_group)
 
-        return self.action_space
-    
+        return self.action_space        
+
     def _initialize_simulation(self, 
                                actuator_group: list[int] = [1]
                                ) -> tuple[mujoco.MjModel, mujoco.MjData]:
@@ -178,7 +187,20 @@ class CustomMujocoEnv(gym.Env):
         model = mujoco.MjModel.from_xml_path(self.fullpath)
         model.vis.global_.offwidth = self.width
         model.vis.global_.offheight = self.height
+        if self._enable_terrain:
+            terrain_data = utils.generate_terrain(
+                terrain_type=self._terrain_type,
+                width=model.hfield_nrow[0],
+                height=model.hfield_ncol[0],
+                crater_depth_range=(0.15, 0.25),
+                crater_radius_range=(3, 5), 
+                num_craters=75,
+                                                  )
+            # Add terrain to the model
+            model.hfield_data[:] = terrain_data.flatten()
+        
         data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
         # Enable only specified actuator groups
         for i in range(len(actuator_group)):
             model.opt.disableactuator &= ~(1 << actuator_group[i])

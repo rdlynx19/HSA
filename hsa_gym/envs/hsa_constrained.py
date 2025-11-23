@@ -27,9 +27,14 @@ class HSAEnv(CustomMujocoEnv):
                  yvel_cost_weight: float = 1.0,
                  constraint_cost_weight: float = 1e-2,
                  acc_cost_weight: float = 1e-2,
+                 distance_reward_weight: float = 1.0,
                  early_termination_penalty: float = 50.0,
+                 joint_vel_cost_weight: float = 1e-3,
                  alive_bonus: float = 0.1,
                  max_increment: float = 3.14,
+                 enable_terrain: bool = False,
+                 terrain_type: str = "craters",
+                 goal_position: list[float] = [3.0, 1.0, 0.1],
                  **kwargs):
 
         self._forward_reward_weight = forward_reward_weight
@@ -39,12 +44,18 @@ class HSAEnv(CustomMujocoEnv):
         self._constraint_cost_weight = constraint_cost_weight
         self._acc_cost_weight = acc_cost_weight
         self._early_termination_penalty = early_termination_penalty
+        self._distance_reward_weight = distance_reward_weight
         self._alive_bonus = alive_bonus 
+        self._joint_vel_cost_weight = joint_vel_cost_weight
 
         self._actuator_group = actuator_group
         self._clip_actions = clip_actions
 
+        self._goal_position = np.array(goal_position, dtype=np.float64)
+
         self._max_increment = max_increment
+        self._enable_terrain = enable_terrain
+        self._terrain_type = terrain_type
 
         # Step Count
         self._step_count = 0
@@ -57,6 +68,8 @@ class HSAEnv(CustomMujocoEnv):
                                  actuator_group=actuator_group,
                                  action_group=action_group,
                                  smooth_positions=smooth_positions,
+                                 enable_terrain=enable_terrain,
+                                 terrain_type=terrain_type,
                                  **kwargs)
 
         self.metadata = {
@@ -94,6 +107,7 @@ class HSAEnv(CustomMujocoEnv):
             + len(self._actuated_qvel_indices)
             + 2  # XY com position of robot
             + 3  # XYZ velocity of robot
+            + 1 # Distance to goal
         )
 
         # Observation Space
@@ -109,7 +123,8 @@ class HSAEnv(CustomMujocoEnv):
             "qpos": self.data.qpos.size,
             "qvel": self.data.qvel.size,
             "com_position": 2,
-            "com_velocity": 3
+            "com_velocity": 3,
+            "distance_to_goal": 1
         }
   
         # Previous action for smoothing reward calculation
@@ -123,6 +138,50 @@ class HSAEnv(CustomMujocoEnv):
             len(self._actuated_qvel_indices), 
             dtype=np.float32
         )
+
+        self._prev_distance_to_goal = np.linalg.norm(
+            self._compute_COM() - np.array(goal_position[:2])
+            )
+
+    def _get_spawn_height(self, x, y) -> float:
+        """
+        Get the spawn height for the terrain at the given (x, y) coordinates.
+        """
+        hfield_size = self.model.hfield_size[0]
+        x_half, y_half, z_max, base_height = hfield_size
+
+        nrow = self.model.hfield_nrow[0]
+        ncol = self.model.hfield_ncol[0]
+        # World coordinates range from [-x_half, x_half] and [-y_half, y_half]
+        grid_i = int((x + x_half) / (2 * x_half) * (nrow - 1))
+        grid_j = int((y + y_half) / (2 * y_half) * (ncol - 1))
+        # Clamp to valid range
+        grid_i = np.clip(grid_i, 0, nrow - 1)
+        grid_j = np.clip(grid_j, 0, ncol - 1)
+
+       # Get normalized height (0 to 1)
+        terrain_data = self.model.hfield_data.reshape(nrow, ncol)
+        normalized_height = terrain_data[grid_i, grid_j]
+
+           # Convert to actual height
+        actual_height = base_height + normalized_height * z_max
+        
+        return actual_height
+
+    def distance_cost(self, 
+                         goal_position: NDArray[np.float64]) -> float:
+        """
+        Compute the distance reward based on the current position and the goal position.
+        """
+        current_position = self._compute_COM()
+        distance = np.linalg.norm(current_position - goal_position[:2])
+
+        # Progress reward: positive if getting closer, negative if moving away
+        distance_progress = self._prev_distance_to_goal - distance
+
+        self._prev_distance_to_goal = distance
+
+        return distance_progress
 
     def _scale_action(self, 
                       norm_action: NDArray[np.float32]) -> NDArray[np.float32]:
@@ -151,16 +210,16 @@ class HSAEnv(CustomMujocoEnv):
         # Acceleration cost
         acc_cost = self._acc_cost_weight * np.sum(np.square(joint_acc))
         # Cap cost
-        acc_cost = min(acc_cost, 5.0)
+   
         # Update previous velocities
         self._prev_joint_velocities = joint_velocities.copy()
 
         return acc_cost
 
     def constraint_cost(self,
-                        diff_margin: float = 0.1,
-                        handedness_margin: float = 0.1,
-                        penalty_factor: float = 5.0) -> float:
+                        diff_margin: float = 0.01,
+                        penalty_factor: float = 1.0,
+                        bonus_factor: float = 0.02) -> float:
         """
         Compute penalty for violating angular difference constraints.
 
@@ -194,6 +253,7 @@ class HSAEnv(CustomMujocoEnv):
         }
 
         constraint_cost = 0.0
+        constraint_bonus = 0.0
         diff_threshold = np.pi - diff_margin
 
         pairs = [
@@ -207,13 +267,13 @@ class HSAEnv(CustomMujocoEnv):
             pos_a = joint_positions[a_name]
             pos_c = joint_positions[c_name]
 
-            # Compute angle difference with proper wrapping
-            # this ensures the difference is within [-pi, pi]
-            raw_diff = pos_a - pos_c
-            wrapped_diff = np.arctan2(np.sin(raw_diff), np.cos(raw_diff))
+            # # Compute angle difference with proper wrapping
+            # # this ensures the difference is within [-pi, pi]
+            # raw_diff = pos_a - pos_c
+            # wrapped_diff = np.arctan2(np.sin(raw_diff), np.cos(raw_diff))
 
-            # Get absolute difference
-            diff = abs(wrapped_diff)
+            # # Get absolute difference
+            diff = abs(pos_a - pos_c)
             # Now diff is guaranteed to be in [0, pi]
             # Only penalize if difference exceeds threshold
             if diff > diff_threshold:
@@ -224,13 +284,12 @@ class HSAEnv(CustomMujocoEnv):
                 # Quadratic growth: penalty = k * proximity^2
                 pair_penalty = penalty_factor * (proximity ** 2)
                 constraint_cost += pair_penalty
-        
-        # Cap the max constraint to avoid excessive penalties
-        constraint_cost = min(constraint_cost, 10.0) 
-
+            else:
+                constraint_bonus += bonus_factor 
+            
         # Handedness constraint is missing for now
         # Hoping model learns it by using the difference constraint alone
-        return constraint_cost
+        return constraint_cost, constraint_bonus
 
     def contact_cost(self) -> float:
         """
@@ -249,7 +308,7 @@ class HSAEnv(CustomMujocoEnv):
                 pass
         
         contact_cost = self._contact_cost_weight * total_excessive_force
-        contact_cost = min(contact_cost, 5.0)  # Cap the contact cost
+        
         return contact_cost
 
 
@@ -268,8 +327,17 @@ class HSAEnv(CustomMujocoEnv):
         control_cost = self._ctrl_cost_weight * np.sum(np.square(action_diff))
         self._prev_action = action.copy()
 
-        control_cost = min(control_cost, 5.0)  # Cap the control cost
+        
         return control_cost
+    
+    def joint_velocity_cost(self) -> float:
+        """
+        Penalize high joint velocities.
+        """
+        joint_velocities = self.data.qvel[self._actuated_qvel_indices]
+        joint_velocities = np.clip(joint_velocities, -50.0, 50.0)
+        joint_vel_cost = self._joint_vel_cost_weight * np.sum(np.square(joint_velocities))
+        return joint_vel_cost
 
     def step(self, 
              action: NDArray[np.float32]
@@ -294,27 +362,47 @@ class HSAEnv(CustomMujocoEnv):
         # Calculate velocity
         xy_velocity = (current_position - previous_position) / self.dt
         x_velocity, y_velocity = xy_velocity
-        x_velocity = np.clip(x_velocity, -10.0, 10.0)
-        y_velocity = np.clip(y_velocity, -10.0, 10.0)
+        x_velocity = np.clip(x_velocity, -5.0, 5.0)
+        y_velocity = np.clip(y_velocity, -5.0, 5.0)
         
         observation = self._get_obs()
         reward, reward_info = self._get_reward(action, x_velocity, y_velocity)
-        terminated = ((self.get_body_com("block_a")[2] > 0.4) or 
-                      (self.get_body_com("block_b")[2] > 0.4) or
-                      (np.isnan(observation).any()) or
-                       (np.isinf(observation).any()))
+        terminated = (
+            np.isnan(self.data.qpos).any() or
+            np.isinf(self.data.qpos).any() or
+            np.isnan(self.data.qvel).any() or
+            np.isinf(self.data.qvel).any() or
+            np.isnan(self.data.qacc).any() or
+            np.isinf(self.data.qacc).any() or
+            (self.get_body_com("block_a")[2] > 0.5) or
+            (self.get_body_com("block_b")[2] > 0.5) or
+            (self.get_body_com("block_a")[2] < -0.5) or
+            (self.get_body_com("block_b")[2] < -0.5) or
+            (np.isnan(observation).any()) or
+            (np.isinf(observation).any()) 
+        )
 
         truncated = False
         # Scale early termination penalty
         if terminated and not truncated:
-            steps_lost = 2000 - self._step_count
+            steps_lost = 3000 - self._step_count
             early_term_pen = (self._early_termination_penalty) * steps_lost
         else: 
             early_term_pen = 0.0
-
+       
         alive_bonus = (
             self._alive_bonus if not (terminated or truncated) else 0.0
         )
+
+        # Bonus for reaching close to goal
+        current_distance = np.linalg.norm(
+            self._compute_COM() - self._goal_position[:2]
+        )
+        if current_distance < 0.05:
+            reward += 400.0
+            early_term_pen = 0.0  # No penalty if goal is reached
+            terminated = True
+
         reward = reward + alive_bonus - early_term_pen
 
         actual_position = self.data.qpos[self._actuated_qpos_indices].copy()
@@ -327,6 +415,8 @@ class HSAEnv(CustomMujocoEnv):
             "desired_position": scaled_action,
             "actual_position": actual_position,
             "tracking_error": np.mean(np.abs(scaled_action - actual_position)),
+            "reward_termination": early_term_pen,
+            "reward_alive": alive_bonus,
             **reward_info
         }
 
@@ -348,35 +438,47 @@ class HSAEnv(CustomMujocoEnv):
         """
         total_speed = np.sqrt(x_velocity ** 2 + y_velocity ** 2)
         # Reward is based on velocity in x direction
-        forward_reward = (self._forward_reward_weight) * x_velocity
+        forward_reward = (self._forward_reward_weight) * abs(x_velocity)
 
-        # Y velocity penalty
-        y_penalty = self._yvel_cost_weight * abs(y_velocity ** 2)
-        y_penalty = min(y_penalty, 10.0)
+        # Y velocity reward
+        lateral_reward = self._yvel_cost_weight * abs(y_velocity)
 
         # Control cost penalty
         ctrl_cost = self.control_cost(action)
-
+        ctrl_cost = min(ctrl_cost, 20.0)
         # Contact cost penalty
         contact_cost = self.contact_cost()
-
+        contact_cost = min(contact_cost, 30.0)
         # Constraint cost penalty
-        constraint_cost = self._constraint_cost_weight * self.constraint_cost()
-
+        constraint_violation, constraint_bonus = self.constraint_cost()
+        constraint_cost = self._constraint_cost_weight * constraint_violation
+        constraint_cost = min(constraint_cost, 50.0)
         # Acceleration cost penalty
         acc_cost = self.acceleration_cost()
-
+        acc_cost = min(acc_cost, 20.0)
+        # Joint velocity cost penalty
+        joint_vel_cost = self.joint_velocity_cost()
+        joint_vel_cost = min(joint_vel_cost, 50.0)
+        # Distance reward
+        distance_reward = (
+            self._distance_reward_weight * 
+            self.distance_cost(self._goal_position)
+        )
+        
         costs = (
-            ctrl_cost + contact_cost + y_penalty + constraint_cost + acc_cost
+            ctrl_cost + contact_cost + constraint_cost + acc_cost + joint_vel_cost
             )
-        reward = forward_reward - costs
+        reward = forward_reward + lateral_reward - costs + distance_reward + constraint_bonus
         reward_info = {
             "reward_forward": forward_reward,
             "reward_ctrl_cost": -ctrl_cost,
             "reward_contact_cost": -contact_cost,
-            "reward_y_penalty": -y_penalty,
+            "reward_lateral": lateral_reward,
             "reward_constraint_cost": -constraint_cost,
+            "reward_constraint_bonus": constraint_bonus,
             "reward_acc_cost": -acc_cost,
+            "reward_joint_vel_cost": -joint_vel_cost,
+            "reward_distance": distance_reward,
             "reward_total_costs": -costs
         }
     
@@ -399,10 +501,16 @@ class HSAEnv(CustomMujocoEnv):
         blockb_vel = self.data.qvel[13:16].copy()
         avg_velocity = 0.5 * (blocka_vel + blockb_vel)
 
+        # Get distance to goal 
+        distance_to_goal = np.linalg.norm(
+            self._compute_COM() - self._goal_position[:2]
+        ).reshape(1)
+
         observation = np.concatenate([pos, 
                                       vel, 
                                       current_position, 
-                                      avg_velocity]).ravel()
+                                      avg_velocity, 
+                                      distance_to_goal]).ravel()
         return observation
 
     def reset_model(self) -> NDArray[np.float64]:
@@ -411,7 +519,27 @@ class HSAEnv(CustomMujocoEnv):
 
         :return: Initial observation after reset
         """
-        self.set_state(self.init_qpos, self.init_qvel)
+        qpos = self.init_qpos.copy()
+        qvel = self.init_qvel.copy()
+
+        if self._enable_terrain:
+            # Get spawn positions for both blocks
+            blocka_x, blocka_y = -0.2, 0.0
+            blockb_x, blockb_y = 0.2, 0.0
+            # Get terrain height at those positions
+            terrain_a_z = self._get_spawn_height(blocka_x, blocka_y)
+            terrain_b_z = self._get_spawn_height(blockb_x, blockb_y)
+
+            # Use the higher terrain height to ensure both blocks are above ground
+            terrain_height = max(terrain_a_z, terrain_b_z)
+
+            robot_clearance = 0.1  # Meters above terrain
+            spawn_z = terrain_height + robot_clearance
+
+            qpos[2] = spawn_z
+            qpos[15] = spawn_z
+
+        self.set_state(qpos, qvel)
         
         self._step_count = 0
         # Initialize previous action at reset
@@ -424,6 +552,10 @@ class HSAEnv(CustomMujocoEnv):
         self._prev_joint_velocities = np.zeros(
             len(self._actuated_qvel_indices), 
             dtype=np.float32
+        )
+         
+        self._prev_distance_to_goal = np.linalg.norm(
+            self._compute_COM() - self._goal_position[:2]
         )
 
         observation = self._get_obs()
@@ -456,6 +588,7 @@ class HSAEnv(CustomMujocoEnv):
 
         scaled_action = self._prev_scaled_action.copy()
         actual_position = self.data.qpos[self._actuated_qpos_indices].copy()
+
         info = {
             "previous_position": previous_position,
             "current_position": current_position,

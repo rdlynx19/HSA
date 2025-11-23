@@ -1,11 +1,63 @@
 import gymnasium as gym
 import numpy as np
 import yaml
-import os
+import os, re, glob
 import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from gymnasium.wrappers import TimeLimit
 from hsa_gym.envs.hsa_constrained import HSAEnv
+
+def extract_step_number(filepath: str) -> int:
+    """
+    Extract the step number from a checkpoint filename.
+    """
+    filename = os.path.basename(filepath)
+    numbers = re.findall(r'\d+', filename)
+    if not numbers:
+        return 0
+    return int(max(numbers, key=int))
+
+def find_matching_vecnormalize(checkpoint_dir: str, model_path: str) -> str:
+    """
+    Find the VecNormalize stats file that matches the model checkpoint.
+    
+    Args:
+        checkpoint_dir: Directory containing checkpoints
+        model_path: Path to model checkpoint
+    
+    Returns:
+        Path to matching VecNormalize file, or None if not found
+    """
+    try:
+        model_steps = extract_step_number(model_path)
+    except:
+        model_steps = None
+    
+    # Strategy 1: Look for exact match by step number
+    if model_steps:
+        exact_match = os.path.join(checkpoint_dir, f"vec_normalize_{model_steps}_steps.pkl")
+        if os.path.exists(exact_match):
+            print(f"[VecNormalize] Found exact match: {exact_match}")
+            return exact_match
+    
+    # Strategy 2: Look for "final" version
+    final_path = os.path.join(checkpoint_dir, "vec_normalize_final.pkl")
+    if os.path.exists(final_path):
+        print(f"[VecNormalize] Found final version: {final_path}")
+        return final_path
+    
+    # Strategy 3: Get the latest VecNormalize file
+    vecnorm_files = glob.glob(os.path.join(checkpoint_dir, "vec_normalize_*_steps.pkl"))
+    if vecnorm_files:
+        vecnorm_files.sort(key=lambda x: extract_step_number(x))
+        latest = vecnorm_files[-1]
+        print(f"[VecNormalize] Using latest available: {latest}")
+        return latest
+    
+    print(f"[VecNormalize] WARNING: No VecNormalize stats found in {checkpoint_dir}")
+    return None
+    
 
 def load_config(checkpoint_dir: str):
     config_path = os.path.join(checkpoint_dir, "used_config.yaml")
@@ -28,9 +80,17 @@ def make_env(config, render_mode="human"):
         acc_cost_weight=env_config["acc_cost_weight"],
         smooth_positions=env_config["smooth_positions"],
         frame_skip=env_config["frame_skip"],
-        max_increment=env_config["max_increment"]
+        max_increment=env_config["max_increment"],
+        enable_terrain=env_config.get("enable_terrain", False),
+        terrain_type=env_config.get("terrain_type", "flat"),
+        early_termination_penalty=env_config.get("early_termination_penalty", 0.0),
+        alive_bonus=env_config.get("alive_bonus", 0.0),
+        goal_position=env_config.get("goal_position", None),
+        distance_reward_weight=env_config.get("distance_reward_weight", 0.0),
     )
     env = TimeLimit(env, max_episode_steps=env_config["max_episode_steps"])
+
+
     return env
 
 def wrapped_angle_diff(a, c):
@@ -47,7 +107,21 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
     """
     print("Loading configuration and model...")
     config = load_config(checkpoint_dir)
-    env = make_env(config)
+
+    base_env = make_env(config, render_mode="human")
+    env = DummyVecEnv([lambda: base_env])
+    vecnorm_path = find_matching_vecnormalize(checkpoint_dir, model_path)
+    if vecnorm_path:
+        print(f"\n[VecNormalize] Loading normalization stats from:")
+        print(f"  {vecnorm_path}")
+
+        env = VecNormalize.load(vecnorm_path, env)
+        # Ensure the environment is in evaluation mode
+        env.training = False
+        env.norm_reward = False
+    else:
+        env = VecNormalize(env, training=False, norm_reward=False)
+
     model = PPO.load(model_path, env=env)
 
     
@@ -65,31 +139,33 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
     print(f"\nRunning {num_episodes} episodes to collect data...")
     
     for ep in range(num_episodes):
-        obs, info = env.reset()
+        obs = env.reset()
         done = False
         episode_actions = []
         episode_joint_pos = []
         episode_joint_vel = []
         episode_constraint_diffs = []
         prev_action = None
-        
+        step_count = 0
+
         while not done:
             action, _ = model.predict(obs, deterministic=True)
-            obs, reward, terminated, truncated, info = env.step(action)
-            done = terminated or truncated
-            
+            obs, reward, done_array, info = env.step(action)
+            done = done_array[0]
+            step_count += 1
             # Store action
-            episode_actions.append(action.copy())
-            
+            episode_actions.append(action[0].copy())
+
             # Store action change
             if prev_action is not None:
-                action_change = np.abs(action - prev_action)
+                action_change = np.abs(action[0] - prev_action)
                 all_action_changes.append(action_change)
-            prev_action = action.copy()
-            
+            prev_action = action[0].copy()
+
+            unwrapped_env = env.envs[0].unwrapped
             # Store joint positions and velocities if available
-            if hasattr(env.unwrapped, 'data'):
-                data = env.unwrapped.data
+            if hasattr(unwrapped_env, 'data'):
+                data = unwrapped_env.data
                 # Get joint positions for actuated joints
                 joint_pos = [data.qpos[idx] for idx in qpos_indices]
                 joint_vel = [data.qvel[idx] for idx in qvel_indices]
@@ -104,10 +180,10 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
 
                 # Calculate constraint differences
                 diffs = [
-                    wrapped_angle_diff(joint_pos[0], joint_pos[4]),  # 1A - 1C
-                    wrapped_angle_diff(joint_pos[1], joint_pos[5]),  # 2A - 2C
-                    wrapped_angle_diff(joint_pos[2], joint_pos[6]),  # 3A - 3C
-                    wrapped_angle_diff(joint_pos[3], joint_pos[7]),  # 4A - 4C
+                    abs(joint_pos[0] - joint_pos[4]),  # 1A - 1C
+                    abs(joint_pos[1] - joint_pos[5]),  # 2A - 2C
+                    abs(joint_pos[2] - joint_pos[6]),  # 3A - 3C
+                    abs(joint_pos[3] - joint_pos[7]),  # 4A - 4C
                 ]
                 episode_constraint_diffs.append(diffs)
         
@@ -116,7 +192,7 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
         all_joint_velocities.extend(episode_joint_vel)
         all_constraint_diffs.extend(episode_constraint_diffs)
         
-        print(f"  Episode {ep+1}/{num_episodes} completed")
+        print(f"  Episode {ep+1}/{num_episodes} completed - {step_count} steps")
     
     # Convert to numpy arrays
     all_actions = np.array(all_actions)
@@ -294,8 +370,8 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
 
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_velocity")
-    model_path = os.path.join(checkpoint_dir, "model_500000_steps.zip")
+    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_stiff")
+    model_path = os.path.join(checkpoint_dir, "model_4000000_steps.zip")
 
     
     analyze_actions(checkpoint_dir, model_path, num_episodes=2)
