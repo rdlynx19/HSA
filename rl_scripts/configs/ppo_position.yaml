@@ -1,50 +1,50 @@
 env:
-  xml_file: "hsaTerrainModel.xml"
-  n_envs: 4
+  xml_file: "hsaTerrainNoStiffModel.xml"
+  n_envs: 16
   frame_skip: 20
   actuator_group: [1]
   action_group: [1]
   # === REWARD STRUCTURE ===
   # Forward progress (main objective)
-  forward_reward_weight: 8.0
+  forward_reward_weight: 10.0
 
   # Efficiency costs (minor - encourage good behaviour)
-  ctrl_cost_weight: 0.01
-  contact_cost_weight: 0.005
+  ctrl_cost_weight: 0.001
+  contact_cost_weight: 0.0005
   acc_cost_weight: 0.00001
 
   # Direction costs (moderate - enforce straight movement)
   yvel_cost_weight: 0.0
 
   # Constraint cost (important - enforce mechanical limits)
-  constraint_cost_weight: 5.0
-  joint_vel_cost_weight: 0.005
+  constraint_cost_weight: 0.05
+  joint_vel_cost_weight: 0.0005
 
-  distance_reward_weight: 100.0
+  distance_reward_weight: 10.0
   # Stability/survival (critical - prevent early termination)
-  alive_bonus: 0.2 # (reward for staying alive each step)
-  early_termination_penalty: 1.0  # (big penalty for falling/failing)
+  alive_bonus: 0.03 # (reward for staying alive each step)
+  early_termination_penalty: 0.1 # (big penalty for falling/failing)
   smooth_positions: true
   max_increment: 0.1785
   max_episode_steps: 3000
   enable_terrain: true
   terrain_type: "flat"
-  goal_position: [3.5, 1.0, 0.1]
+  goal_position: [1.5, 0.0, 0.1]
 
 model:
   policy: "MlpPolicy"
-  n_steps: 2048
+  n_steps: 1024
   batch_size: 64
-  learning_rate: 0.0003
+  learning_rate: 0.00001
   gamma: 0.99
   gae_lambda: 0.95
   clip_range: 0.2
-  ent_coef: 0.02
+  ent_coef: 0.005
 
 train:
   total_timesteps: 40_000_000
   log_dir: "./logs/"
-  run_name: "ppo_stiff"
+  run_name: "ppo_movement"
   checkpoint_dir: "./checkpoints/"
   checkpoint_freq: 500_000
   resume: true

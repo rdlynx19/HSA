@@ -55,6 +55,7 @@ class CustomMujocoEnv(gym.Env):
         smooth_positions: bool = True,
         enable_terrain: bool = False,
         terrain_type: str = "craters",
+        goal_position: list[float] = [1.5, 0.0, 0.1]
     ):
         """
         Base abstract class for MuJoCo based environments.
@@ -84,6 +85,7 @@ class CustomMujocoEnv(gym.Env):
 
         # May use width and height
         self.model, self.data = self._initialize_simulation(actuator_group)
+        self._update_goal_marker(goal_position=goal_position)
 
         self.init_qpos = self.data.qpos.ravel().copy()
         self.init_qvel = self.data.qvel.ravel().copy()
@@ -175,9 +177,10 @@ class CustomMujocoEnv(gym.Env):
         self._actuator_low, self._actuator_high = self._get_range_bounds(actuator_group)
 
         return self.action_space        
+    
 
     def _initialize_simulation(self, 
-                               actuator_group: list[int] = [1]
+                               actuator_group: list[int] = [1],
                                ) -> tuple[mujoco.MjModel, mujoco.MjData]:
         """
         Initialize MuJoCo simulation data structures `mjModel` and `mjData`. 
@@ -201,10 +204,29 @@ class CustomMujocoEnv(gym.Env):
         
         data = mujoco.MjData(model)
         mujoco.mj_forward(model, data)
+      
         # Enable only specified actuator groups
         for i in range(len(actuator_group)):
             model.opt.disableactuator &= ~(1 << actuator_group[i])
         return model, data
+
+    def _update_goal_marker(self, 
+                            goal_position: list[float] = [1.5, 0.0, 0.1],
+                            marker_name: str = "goal"
+                            ) -> None:
+        """
+        Update the position of the goal marker in the simulation.
+
+        :param goal_position: Desired position of the goal marker
+        :param marker_name: Name of the marker in the MuJoCo model
+        """
+        marker_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, marker_name)
+        if marker_id == -1:
+            raise ValueError(f"Marker '{marker_name}' not found in the model.")
+        
+        self.model.body_pos[marker_id] = np.array(goal_position, dtype=np.float64)
+        mujoco.mj_forward(self.model, self.data)
+
 
     def set_state(self, qpos: NDArray[np.float64], qvel: NDArray[np.float64]):
         """

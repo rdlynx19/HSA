@@ -13,7 +13,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback,
 from hsa_gym.envs.hsa_constrained import HSAEnv
 
 config_file = "./configs/ppo_position.yaml"
-xml_file = "../hsa_gym/envs/assets/hsaTerrainModel.xml"
+xml_file = "../hsa_gym/envs/assets"
 
 def load_config(config_path: str = config_file):
     """
@@ -134,7 +134,8 @@ def main():
     shutil.copy(config_path, os.path.join(checkpoint_dir, "used_config.yaml"))
     print(f"[Config] Training configuration saved to {os.path.join(checkpoint_dir, 'used_config.yaml')}")
     
-    xml_path = os.path.join(script_dir, xml_file)
+    xml_model = config["env"]["xml_file"]
+    xml_path = os.path.join(script_dir, xml_file, xml_model)
     shutil.copy(xml_path, os.path.join(checkpoint_dir, "used_model.xml"))
     print(f"[Config] XML model file saved to {os.path.join(checkpoint_dir, 'used_model.xml')}")
     # Create a vectorized environment with 4 parallel environments

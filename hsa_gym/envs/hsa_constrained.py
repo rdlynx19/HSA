@@ -17,7 +17,7 @@ class HSAEnv(CustomMujocoEnv):
                  xml_file: str = "hsaModel.xml",
                  frame_skip: int = 4,
                  default_camera_config: dict[str, float | int] = {},
-                 forward_reward_weight: float = 1.0,
+                 forward_reward_weight: float = 10.0,
                  ctrl_cost_weight: float = 1e-3,
                  actuator_group: list[int] = [1],
                  action_group: list[int] = [1],
@@ -57,6 +57,9 @@ class HSAEnv(CustomMujocoEnv):
         self._enable_terrain = enable_terrain
         self._terrain_type = terrain_type
 
+        self._qvel_limit = 500.0 # Max joint velocity for termination condition
+        self._qacc_limit = 5000.0 # Max joint acceleration for termination
+
         # Step Count
         self._step_count = 0
 
@@ -70,6 +73,7 @@ class HSAEnv(CustomMujocoEnv):
                                  smooth_positions=smooth_positions,
                                  enable_terrain=enable_terrain,
                                  terrain_type=terrain_type,
+                                 goal_position=self._goal_position,   
                                  **kwargs)
 
         self.metadata = {
@@ -219,7 +223,7 @@ class HSAEnv(CustomMujocoEnv):
     def constraint_cost(self,
                         diff_margin: float = 0.01,
                         penalty_factor: float = 1.0,
-                        bonus_factor: float = 0.02) -> float:
+                        bonus_factor: float = 0.025) -> float:
         """
         Compute penalty for violating angular difference constraints.
 
@@ -338,6 +342,54 @@ class HSAEnv(CustomMujocoEnv):
         joint_velocities = np.clip(joint_velocities, -50.0, 50.0)
         joint_vel_cost = self._joint_vel_cost_weight * np.sum(np.square(joint_velocities))
         return joint_vel_cost
+    
+    def vec_to_goal(self) -> NDArray[np.float64]:
+        """
+        Compute the vector from the robot's current position to the goal position.
+        """
+        current_position = self._compute_COM()
+        goal_vector = self._goal_position[:2] - current_position
+        distance_to_goal = np.linalg.norm(goal_vector)
+        goal_unit_vector = goal_vector / (distance_to_goal + 1e-8)  # Avoid division by zero
+        return goal_unit_vector
+
+    def _check_termination(self,
+                           observation: NDArray[np.float64]
+                           ) -> bool:
+        """
+        Check if the episode should be terminated and store the reason.
+        :return: True if the episode should be terminated, False otherwise
+        """
+        reasons = []
+
+        if np.isnan(self.data.qpos).any(): reasons.append("qpos_nan")
+        if np.isinf(self.data.qpos).any(): reasons.append("qpos_inf")
+
+        if np.isnan(self.data.qvel).any(): reasons.append("qvel_nan")
+        if np.isinf(self.data.qvel).any(): reasons.append("qvel_inf")
+
+        if np.isnan(self.data.qacc).any(): reasons.append("qacc_nan")
+        if np.isinf(self.data.qacc).any(): reasons.append("qacc_inf")
+
+        # Body out of range
+        z_a = self.get_body_com("block_a")[2]
+        z_b = self.get_body_com("block_b")[2]
+
+        if z_a > 0.5: reasons.append("block_a_too_high")
+        if z_b > 0.5: reasons.append("block_b_too_high")
+        if z_a < -0.5: reasons.append("block_a_too_low")
+        if z_b < -0.5: reasons.append("block_b_too_low")
+
+        # Observation issues
+        if np.isnan(observation).any(): reasons.append("obs_nan")
+        if np.isinf(observation).any(): reasons.append("obs_inf")
+
+        # Dynamic limits
+        if np.max(np.abs(self.data.qvel)) > self._qvel_limit: reasons.append("qvel_limit")
+        if np.max(np.abs(self.data.qacc)) > self._qacc_limit: reasons.append("qacc_limit")
+
+        terminated = len(reasons) > 0
+        return terminated, reasons
 
     def step(self, 
              action: NDArray[np.float32]
@@ -367,20 +419,7 @@ class HSAEnv(CustomMujocoEnv):
         
         observation = self._get_obs()
         reward, reward_info = self._get_reward(action, x_velocity, y_velocity)
-        terminated = (
-            np.isnan(self.data.qpos).any() or
-            np.isinf(self.data.qpos).any() or
-            np.isnan(self.data.qvel).any() or
-            np.isinf(self.data.qvel).any() or
-            np.isnan(self.data.qacc).any() or
-            np.isinf(self.data.qacc).any() or
-            (self.get_body_com("block_a")[2] > 0.5) or
-            (self.get_body_com("block_b")[2] > 0.5) or
-            (self.get_body_com("block_a")[2] < -0.5) or
-            (self.get_body_com("block_b")[2] < -0.5) or
-            (np.isnan(observation).any()) or
-            (np.isinf(observation).any()) 
-        )
+        terminated, term_reasons = self._check_termination(observation)
 
         truncated = False
         # Scale early termination penalty
@@ -398,10 +437,11 @@ class HSAEnv(CustomMujocoEnv):
         current_distance = np.linalg.norm(
             self._compute_COM() - self._goal_position[:2]
         )
-        if current_distance < 0.05:
-            reward += 400.0
+        if current_distance < 0.01:
+            reward += 40.0
             early_term_pen = 0.0  # No penalty if goal is reached
             terminated = True
+            term_reasons.append("goal_reached")
 
         reward = reward + alive_bonus - early_term_pen
 
@@ -417,6 +457,7 @@ class HSAEnv(CustomMujocoEnv):
             "tracking_error": np.mean(np.abs(scaled_action - actual_position)),
             "reward_termination": early_term_pen,
             "reward_alive": alive_bonus,
+            "termination_reasons": term_reasons,
             **reward_info
         }
 
@@ -436,9 +477,10 @@ class HSAEnv(CustomMujocoEnv):
         :param action: Action dictionary containing motor commands 
         :return: A tuple containing the reward and a dictionary of reward components
         """
-        total_speed = np.sqrt(x_velocity ** 2 + y_velocity ** 2)
-        # Reward is based on velocity in x direction
-        forward_reward = (self._forward_reward_weight) * abs(x_velocity)
+        com_velocity = np.array([x_velocity, y_velocity])
+        projected_velocity = np.dot(com_velocity, self.vec_to_goal())
+        # Reward is based on velocity towards goal
+        forward_reward = (self._forward_reward_weight) * max(0.0, projected_velocity)
 
         # Y velocity reward
         lateral_reward = self._yvel_cost_weight * abs(y_velocity)
@@ -557,6 +599,15 @@ class HSAEnv(CustomMujocoEnv):
         self._prev_distance_to_goal = np.linalg.norm(
             self._compute_COM() - self._goal_position[:2]
         )
+
+        # Sample x position
+        ranges = [(-3.0, -1.5), (1.5, 3.0)]
+        low, high = ranges[np.random.choice([0, 1])]
+        marker_x = np.random.uniform(low, high)
+        marker_y = np.random.uniform(-1.0, 1.0)
+        marker_z = 0.1
+        self._update_goal_marker(goal_position=[marker_x, marker_y, marker_z])
+        self._goal_position = np.array([marker_x, marker_y, marker_z], dtype=np.float64)
 
         observation = self._get_obs()
         return observation
