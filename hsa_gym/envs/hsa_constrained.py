@@ -112,6 +112,7 @@ class HSAEnv(CustomMujocoEnv):
             + 2  # XY com position of robot
             + 3  # XYZ velocity of robot
             + 1 # Distance to goal
+            + 2 # Vector to goal position
         )
 
         # Observation Space
@@ -128,7 +129,8 @@ class HSAEnv(CustomMujocoEnv):
             "qvel": self.data.qvel.size,
             "com_position": 2,
             "com_velocity": 3,
-            "distance_to_goal": 1
+            "distance_to_goal": 1,
+            "vec_to_goal": 2
         }
   
         # Previous action for smoothing reward calculation
@@ -543,16 +545,19 @@ class HSAEnv(CustomMujocoEnv):
         blockb_vel = self.data.qvel[13:16].copy()
         avg_velocity = 0.5 * (blocka_vel + blockb_vel)
 
-        # Get distance to goal 
+        # Get distance to goal
         distance_to_goal = np.linalg.norm(
             self._compute_COM() - self._goal_position[:2]
         ).reshape(1)
+        vec_to_goal = self._goal_position[:2] - self._compute_COM() 
+        norm_vec = vec_to_goal / (np.linalg.norm(vec_to_goal) + 1e-8)
 
         observation = np.concatenate([pos, 
                                       vel, 
                                       current_position, 
                                       avg_velocity, 
-                                      distance_to_goal]).ravel()
+                                      distance_to_goal,
+                                      norm_vec]).ravel()
         return observation
 
     def reset_model(self) -> NDArray[np.float64]:

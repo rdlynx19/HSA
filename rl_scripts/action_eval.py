@@ -373,7 +373,7 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
     checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_movement")
-    model_path = os.path.join(checkpoint_dir, "model_7000000_steps.zip")
+    model_path = os.path.join(checkpoint_dir, "model_9000000_steps.zip")
 
     
     analyze_actions(checkpoint_dir, model_path, num_episodes=2)
