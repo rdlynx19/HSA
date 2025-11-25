@@ -57,8 +57,8 @@ class HSAEnv(CustomMujocoEnv):
         self._enable_terrain = enable_terrain
         self._terrain_type = terrain_type
 
-        self._qvel_limit = 500.0 # Max joint velocity for termination condition
-        self._qacc_limit = 5000.0 # Max joint acceleration for termination
+        self._qvel_limit = 1000.0 # Max joint velocity for termination condition
+        self._qacc_limit = 8000.0 # Max joint acceleration for termination
 
         # Step Count
         self._step_count = 0
@@ -439,7 +439,7 @@ class HSAEnv(CustomMujocoEnv):
         current_distance = np.linalg.norm(
             self._compute_COM() - self._goal_position[:2]
         )
-        if current_distance < 0.01:
+        if current_distance < 0.05:
             reward += 40.0
             early_term_pen = 0.0  # No penalty if goal is reached
             terminated = True
@@ -606,10 +606,10 @@ class HSAEnv(CustomMujocoEnv):
         )
 
         # Sample x position
-        ranges = [(-3.0, -1.5), (1.5, 3.0)]
+        ranges = [(-4.5, -1.5), (1.5, 4.5)]
         low, high = ranges[np.random.choice([0, 1])]
         marker_x = np.random.uniform(low, high)
-        marker_y = np.random.uniform(-1.0, 1.0)
+        marker_y = np.random.uniform(-3.0, 3.0)
         marker_z = 0.1
         self._update_goal_marker(goal_position=[marker_x, marker_y, marker_z])
         self._goal_position = np.array([marker_x, marker_y, marker_z], dtype=np.float64)

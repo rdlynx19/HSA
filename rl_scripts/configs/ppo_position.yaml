@@ -42,9 +42,9 @@ model:
   ent_coef: 0.005
 
 train:
-  total_timesteps: 40_000_000
+  total_timesteps: 50_000_000
   log_dir: "./logs/"
-  run_name: "ppo_movement"
+  run_name: "ppo_random"
   checkpoint_dir: "./checkpoints/"
   checkpoint_freq: 500_000
   resume: true

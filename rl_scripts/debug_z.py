@@ -18,6 +18,7 @@ print(f"Block A Z: {data.qpos[2]:.3f}")
 print(f"Block B Z: {data.qpos[15]:.3f}")
 print(f"Contacts: {data.ncon}")
 print(f"Reward: {info.get('reward_total_costs', 'N/A')}")
+print(f"Goal Position: {env.unwrapped._goal_position}")
 
 print("\n" + "="*60)
 print("STABILITY TEST - Holding with zero action for 200 steps")
@@ -29,32 +30,32 @@ for i in range(200000):
     action = np.zeros(env.action_space.shape)
     obs, reward, terminated, truncated, info = env.step(action)
     
-    if i % 20 == 0:  # Print every 20 steps
-        print(f"\nStep {i}:")
-        print(f"  Z-heights: A={data.qpos[2]:.3f}, B={data.qpos[15]:.3f}")
-        print(f"  Z-velocities: A={data.qvel[2]:.3f}, B={data.qvel[14]:.3f}")
-        print(f"  Contacts: {data.ncon}")
-        print(f"  Reward: {reward:.3f}")
-        print(f"  Terminated: {terminated}, Truncated: {truncated}")
+    # if i % 20 == 0:  # Print every 20 steps
+    #     print(f"\nStep {i}:")
+    #     print(f"  Z-heights: A={data.qpos[2]:.3f}, B={data.qpos[15]:.3f}")
+    #     print(f"  Z-velocities: A={data.qvel[2]:.3f}, B={data.qvel[14]:.3f}")
+    #     print(f"  Contacts: {data.ncon}")
+    #     print(f"  Reward: {reward:.3f}")
+    #     print(f"  Terminated: {terminated}, Truncated: {truncated}")
     
     if not terminated and not truncated:
         stable_steps += 1
     
-    if terminated or truncated:
-        print(f"\n⚠️  TERMINATED at step {i+1}")
-        print(f"    Reason: {'Terminated' if terminated else 'Truncated'}")
-        print(f"    Final Z-heights: A={data.qpos[2]:.3f}, B={data.qpos[15]:.3f}")
-        break
+    # if terminated or truncated:
+    #     print(f"\n⚠️  TERMINATED at step {i+1}")
+    #     print(f"    Reason: {'Terminated' if terminated else 'Truncated'}")
+    #     print(f"    Final Z-heights: A={data.qpos[2]:.3f}, B={data.qpos[15]:.3f}")
+    #     break
 
-if stable_steps == 20000:
-    print("\n" + "="*60)
-    print("✅ ROBOT IS STABLE!")
-    print("="*60)
-    print(f"Robot remained stable for all {stable_steps} steps")
-else:
-    print("\n" + "="*60)
-    print("❌ ROBOT IS UNSTABLE")
-    print("="*60)
-    print(f"Robot was only stable for {stable_steps}/200 steps")
+# if stable_steps == 20000:
+#     print("\n" + "="*60)
+#     print("✅ ROBOT IS STABLE!")
+#     print("="*60)
+#     print(f"Robot remained stable for all {stable_steps} steps")
+# else:
+#     print("\n" + "="*60)
+#     print("❌ ROBOT IS UNSTABLE")
+#     print("="*60)
+#     print(f"Robot was only stable for {stable_steps}/200 steps")
 
 env.close()
