@@ -58,7 +58,7 @@ class HSAEnv(CustomMujocoEnv):
         self._terrain_type = terrain_type
 
         self._qvel_limit = 1000.0 # Max joint velocity for termination condition
-        self._qacc_limit = 8000.0 # Max joint acceleration for termination
+        self._qacc_limit = 15000.0 # Max joint acceleration for termination
 
         # Step Count
         self._step_count = 0

@@ -372,8 +372,8 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
 
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_random")
-    model_path = os.path.join(checkpoint_dir, "ppo_random_final_40000000_steps.zip")
+    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_restart_random")
+    model_path = os.path.join(checkpoint_dir, "model_4500000_steps.zip")
 
     
     analyze_actions(checkpoint_dir, model_path, num_episodes=2)
