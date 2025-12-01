@@ -5,8 +5,8 @@ env:
   actuator_group: [1]
   action_group: [1]
   # === REWARD STRUCTURE ===
-  # Forward progress (main objective)
-  forward_reward_weight: 10.0
+  # Forward progress (not main objective)
+  forward_reward_weight: 6.0
 
   # Efficiency costs (minor - encourage good behaviour)
   ctrl_cost_weight: 0.001
@@ -20,6 +20,7 @@ env:
   constraint_cost_weight: 0.05
   joint_vel_cost_weight: 0.0005
 
+  # Goal achievement (primary - reach target position)
   distance_reward_weight: 10.0
   # Stability/survival (critical - prevent early termination)
   alive_bonus: 0.03 # (reward for staying alive each step)
@@ -30,6 +31,17 @@ env:
   enable_terrain: true
   terrain_type: "flat"
   goal_position: [1.5, 0.0, 0.1]
+
+curriculum:
+  enabled: true  # Set to false to disable curriculum learning
+  initial_range: [1.5, 2.0]      # Start where your 27.5M model succeeded
+  target_range: [1.5, 4.0]        # End at full arena size
+  success_threshold: 0.75         # Expand when 75% of episodes succeed
+  failure_threshold: 0.50         # Contract when <50% of episodes succeed
+  expansion_step: 0.3             # Expand by 0.3m each time
+  window_size: 100                # Track last 100 episodes
+  min_episodes_before_expand: 50  # Wait 50 episodes before first expansion
+  dead_zone_radius: 1.2           # Minimum distance from origin
 
 model:
   policy: "MlpPolicy"
@@ -42,9 +54,9 @@ model:
   ent_coef: 0.005
 
 train:
-  total_timesteps: 70_000_000
+  total_timesteps: 100_000_000
   log_dir: "./logs/"
-  run_name: "ppo_restart_random"
+  run_name: "ppo_curriculum"
   checkpoint_dir: "./checkpoints/"
   checkpoint_freq: 500_000
   resume: true

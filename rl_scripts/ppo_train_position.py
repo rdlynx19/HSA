@@ -8,6 +8,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor, VecNormalize
 from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback, CallbackList
+from hsa_gym.envs.curriculum_manager import GoalCurriculumManager
 
 
 from hsa_gym.envs.hsa_constrained import HSAEnv
@@ -94,6 +95,19 @@ class RewardComponentLogger(BaseCallback):
                 self.logger.record('reward/distance', info['reward_distance'])
             if 'reward_total_costs' in info:
                 self.logger.record('reward/total_costs', info['reward_total_costs'])
+
+            # Curriculum logging
+            if 'curriculum/max_distance' in info:
+                self.logger.record('curriculum/max_distance', info['curriculum/max_distance'])
+            if 'curriculum/success_rate' in info:
+                self.logger.record('curriculum/success_rate', info['curriculum/success_rate'])
+            if 'curriculum/progress' in info:
+                self.logger.record('curriculum/progress', info['curriculum/progress'])
+            if 'curriculum/final_distance' in info:
+                self.logger.record('curriculum/final_distance', info['curriculum/final_distance'])
+            if 'curriculum/success_threshold' in info:
+                self.logger.record('curriculum/success_threshold', info['curriculum/success_threshold'])
+            
         return True
 
 class SaveVecNormalizeCallback(BaseCallback):
@@ -116,6 +130,41 @@ class SaveVecNormalizeCallback(BaseCallback):
                     print(f"[VecNormalize] Saved to {path} at step {self.num_timesteps}")
         return True
 
+class CurriculumWrapper(gym.Wrapper):
+    """
+    Gym Wrapper to integrate curriculum learning into the environment
+    """
+    def __init__(self, env: gym.Env, curriculum_manager):
+        super().__init__(env)
+        self.curriculum_manager = curriculum_manager
+        self.env.unwrapped.set_curriculum_manager(curriculum_manager)
+
+    def reset(self, **kwargs):
+        return self.env.reset(**kwargs)
+    
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+
+        if terminated or truncated:
+            # Define success: reached within 0.15m of goal
+            success = "goal_reached" in info.get('termination_reasons', [])
+            # Record in curriculum
+            self.curriculum_manager.record_episode(success)
+            # Add curriculum info to logging
+            info.update(self.curriculum_manager.get_curriculum_info())
+
+        return obs, reward, terminated, truncated, info
+
+def make_curriculum_env(env_kwargs, curriculum_manager, max_episode_steps):
+    """
+    Factory function to create environment with curriculum wrapper
+    """
+    def _init():
+        env = HSAEnv(**env_kwargs)
+        env = TimeLimit(env, max_episode_steps=max_episode_steps)
+        env = CurriculumWrapper(env, curriculum_manager)
+        return env
+    return _init
 
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -138,13 +187,27 @@ def main():
     xml_path = os.path.join(script_dir, xml_file, xml_model)
     shutil.copy(xml_path, os.path.join(checkpoint_dir, "used_model.xml"))
     print(f"[Config] XML model file saved to {os.path.join(checkpoint_dir, 'used_model.xml')}")
-    # Create a vectorized environment with 4 parallel environments
-    # Position control only
-    env = make_vec_env(
-        HSAEnv,
-        n_envs=config["env"]["n_envs"],
-        vec_env_cls=SubprocVecEnv,
-        env_kwargs={
+
+    curriculum_config = config.get("curriculum", {})
+    use_curriculum = curriculum_config.get("enabled", False)
+    if use_curriculum:
+        curriculum = GoalCurriculumManager(
+            initial_range=tuple(curriculum_config.get("initial_range", 
+                                                      [1.5, 2.0])),
+            target_range=tuple(curriculum_config.get("target_range", 
+                                                     [1.5, 4.5])),
+            success_threshold=curriculum_config.get("success_threshold", 0.85),
+            failure_threshold=curriculum_config.get("failure_threshold", 0.50),
+            expansion_step=curriculum_config.get("expansion_step", 0.3),
+            window_size=curriculum_config.get("window_size", 100),
+            min_episodes_before_expand=curriculum_config.get("min_episodes_before_expand", 50),
+            dead_zone_radius=curriculum_config.get("dead_zone_radius", 1.2)
+        )
+    else:
+        curriculum = None
+        print(f"[Curriculum] Curriculum learning is disabled - using fixed goal sampling.")
+
+    env_kwargs={
             "xml_file": config["env"]["xml_file"],
             "actuator_group": config["env"]["actuator_group"],
             "action_group": config["env"]["action_group"],
@@ -164,10 +227,27 @@ def main():
             "terrain_type": config["env"]["terrain_type"],
             "goal_position": config["env"]["goal_position"],
             "distance_reward_weight": config["env"]["distance_reward_weight"]
-        },
-        wrapper_class=TimeLimit,
-        wrapper_kwargs={"max_episode_steps": config["env"]["max_episode_steps"]},
-    )
+        }
+
+    if use_curriculum:
+        env = SubprocVecEnv([
+            make_curriculum_env(
+                env_kwargs=env_kwargs,
+                curriculum_manager=curriculum,
+                max_episode_steps=config["env"]["max_episode_steps"]
+            )
+            for _ in range(config["env"]["n_envs"])
+        ])
+    else:
+        # Create standard vectorized environment without curriculum
+        env = make_vec_env(
+            HSAEnv,
+            n_envs=config["env"]["n_envs"],
+            vec_env_cls=SubprocVecEnv,
+            env_kwargs=env_kwargs,
+            wrapper_class=TimeLimit,
+            wrapper_kwargs={"max_episode_steps": config["env"]["max_episode_steps"]},
+        )
 
     # Keep track of episode statistics
     env = VecMonitor(env)
