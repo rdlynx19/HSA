@@ -1,6 +1,7 @@
 import yaml, os, glob, shutil, re
 
 import gymnasium as gym
+import numpy as np
 
 from gymnasium.wrappers import TimeLimit
 
@@ -166,6 +167,33 @@ def make_curriculum_env(env_kwargs, curriculum_manager, max_episode_steps):
         return env
     return _init
 
+class SaveCurriculumCallback(BaseCallback):
+    """Custom callback to save curriculum state alongside model checkpoints"""
+    def __init__(self, curriculum_manager, save_freq: int, save_path: str, 
+                 name_prefix: str = "curriculum", verbose=0):
+        super().__init__(verbose)
+        self.curriculum_manager = curriculum_manager
+        self.save_freq = save_freq
+        self.save_path = save_path
+        self.name_prefix = name_prefix
+    
+    def _on_step(self) -> bool:
+        if self.curriculum_manager is not None and self.n_calls % self.save_freq == 0:
+            path = os.path.join(self.save_path, f"{self.name_prefix}_{self.num_timesteps}_steps.pkl")
+            self.curriculum_manager.save(path)
+            if self.verbose > 0:
+                print(f"[Curriculum] Saved to {path} at step {self.num_timesteps}")
+        return True
+    
+def get_latest_curriculum(checkpoint_dir: str = "checkpoints/"):
+    """Get the latest curriculum state file"""
+    curriculum_files = glob.glob(os.path.join(checkpoint_dir, "curriculum_*_steps.pkl"))
+    if not curriculum_files:
+        return None
+    
+    curriculum_files.sort(key=lambda x: extract_step_number(x))
+    return curriculum_files[-1]
+
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, config_file)
@@ -188,6 +216,7 @@ def main():
     shutil.copy(xml_path, os.path.join(checkpoint_dir, "used_model.xml"))
     print(f"[Config] XML model file saved to {os.path.join(checkpoint_dir, 'used_model.xml')}")
 
+    # Create curriculum manager if enabled
     curriculum_config = config.get("curriculum", {})
     use_curriculum = curriculum_config.get("enabled", False)
     if use_curriculum:
@@ -272,6 +301,7 @@ def main():
     if resume:
         latest = get_latest_checkpoint(checkpoint_dir)
         latest_vecnorm = get_latest_vecnormalize(checkpoint_dir)
+        latest_curriculum = get_latest_curriculum(checkpoint_dir)
         if latest:
             print(f"[Resume] Loading latest checkpoint: {latest}")
 
@@ -285,6 +315,14 @@ def main():
                     print(f"[Resume] WARNING: No VecNormalize stats found!")
                     print(f"[Resume] Starting with fresh normalization stats.")
 
+                if use_curriculum and latest_curriculum:
+                    print(f"[Resume] Loading curriculum state from: {latest_curriculum}")
+                    curriculum.load(latest_curriculum)
+                elif use_curriculum:
+                    print(f"[Resume] WARNING: No curriculum state found!")
+                    print(f"[Resume] Curriculum will start from initial settings.")
+                    print(f"[Resume] This may cause performance degradation!")
+
                 print(f"[Resume] Loading model ...")
                 model = PPO.load(latest, env=env, device='cpu')
                 reset_timesteps = False # Keep the original timestep count
@@ -295,6 +333,19 @@ def main():
         else:
             print(f"[Resume] WARNING: No checkpoint found in {checkpoint_dir}, starting fresh training.")
             resume = False
+
+    if use_curriculum:
+        print(f"\n{'='*60}")
+        print(f"CURRICULUM LEARNING ENABLED")
+        print(f"{'='*60}")
+        print(f"Current range:    {curriculum.min_distance:.1f}m - {curriculum.current_max_distance:.1f}m")
+        print(f"Target range:     {curriculum.target_range[0]:.1f}m - {curriculum.target_range[1]:.1f}m")
+        print(f"Success threshold: {curriculum.success_threshold:.0%}")
+        print(f"Failure threshold: {curriculum.failure_threshold:.0%}")
+        print(f"Episodes tracked: {curriculum.episode_count}")
+        if curriculum.recent_successes:
+            print(f"Recent success rate: {np.mean(curriculum.recent_successes):.1%} (last {len(curriculum.recent_successes)} episodes)")
+        print(f"{'='*60}\n")
 
     if model is None: 
         # Initialize the PPO model
@@ -360,8 +411,16 @@ def main():
         verbose=1
     )
 
+    curriculum_cb = SaveCurriculumCallback(
+        curriculum_manager=curriculum if use_curriculum else None,
+        save_freq=checkpoint_freq // config["env"]["n_envs"],
+        save_path=checkpoint_dir,
+        name_prefix="curriculum",
+        verbose=1
+    ) 
+
     reward_cb = RewardComponentLogger()
-    callbacks = CallbackList([checkpoint_cb, reward_cb, vecnorm_cb])
+    callbacks = CallbackList([checkpoint_cb, reward_cb, vecnorm_cb, curriculum_cb])
     # Train the Model for a few timesteps
     model.learn(
         total_timesteps=timesteps_to_train,

@@ -446,7 +446,7 @@ class HSAEnv(CustomMujocoEnv):
         current_distance = np.linalg.norm(
             self._compute_COM() - self._goal_position[:2]
         )
-        if current_distance < 0.15:
+        if current_distance < 0.20:
             reward += 40.0
             early_term_pen = 0.0  # No penalty if goal is reached
             terminated = True
@@ -621,10 +621,10 @@ class HSAEnv(CustomMujocoEnv):
             marker_x, marker_y, marker_z = goal_pos
 
         else:
-            ranges = [(-3.5, -1.5), (1.5, 3.5)]
+            ranges = [(-1.8, -1.5), (1.5, 1.8)]
             low, high = ranges[np.random.choice([0, 1])]
             marker_x = np.random.uniform(low, high)
-            marker_y = np.random.uniform(-1.0, 1.0)
+            marker_y = np.random.uniform(-1.8, 1.8)
             marker_z = 0.1
 
         self._update_goal_marker(goal_position=[marker_x, marker_y, marker_z])

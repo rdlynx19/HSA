@@ -29,15 +29,15 @@ env:
   max_increment: 0.1785
   max_episode_steps: 4000
   enable_terrain: true
-  terrain_type: "flat"
+  terrain_type: "craters"
   goal_position: [1.5, 0.0, 0.1]
 
 curriculum:
   enabled: true  # Set to false to disable curriculum learning
-  initial_range: [1.5, 2.0]      # Start where your 27.5M model succeeded
-  target_range: [1.5, 4.0]        # End at full arena size
+  initial_range: [1.5, 1.8]      # Start where your 27.5M model succeeded
+  target_range: [1.5, 4.5]        # End at full arena size
   success_threshold: 0.75         # Expand when 75% of episodes succeed
-  failure_threshold: 0.50         # Contract when <50% of episodes succeed
+  failure_threshold: 0.40         # Contract when <40% of episodes succeed
   expansion_step: 0.3             # Expand by 0.3m each time
   window_size: 100                # Track last 100 episodes
   min_episodes_before_expand: 50  # Wait 50 episodes before first expansion
@@ -51,12 +51,12 @@ model:
   gamma: 0.99
   gae_lambda: 0.95
   clip_range: 0.2
-  ent_coef: 0.005
+  ent_coef: 0.006
 
 train:
   total_timesteps: 100_000_000
   log_dir: "./logs/"
-  run_name: "ppo_curriculum"
+  run_name: "ppo_curriculum_craters"
   checkpoint_dir: "./checkpoints/"
   checkpoint_freq: 500_000
   resume: true

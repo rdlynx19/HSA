@@ -1,4 +1,5 @@
 import numpy as np
+import pickle, os
 
 class GoalCurriculumManager:
     """
@@ -8,7 +9,7 @@ class GoalCurriculumManager:
                  initial_range: tuple[float, float] = (1.5, 2.0),
                  target_range: tuple[float, float] = (1.5, 4.5), 
                  success_threshold: float = 0.75,
-                 failure_threshold: float = 0.50,
+                 failure_threshold: float = 0.40,
                  expansion_step: float = 0.3,
                  window_size: int = 100,
                  min_episodes_before_expand: int = 50,
@@ -40,6 +41,63 @@ class GoalCurriculumManager:
         # Track recent episodes
         self.recent_successes = []
         self.episode_count = 0
+
+    def save(self, filepath: str):
+        """Save the current state of the curriculum manager to a file."""
+        state = {
+            "current_max_distance": self.current_max_distance,
+            "recent_successes": self.recent_successes,
+            "episode_count": self.episode_count,
+            "min_distance": self.min_distance,
+            "config": {
+                "initial_range": self.initial_range,
+                "target_range": self.target_range,
+                "success_threshold": self.success_threshold,
+                "failure_threshold": self.failure_threshold,
+                "expansion_step": self.expansion_step,
+                "window_size": self.window_size,
+                "min_episodes_before_expand": self.min_episodes,
+                "dead_zone_radius": self.dead_zone_radius,
+            }
+        }
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, 'wb') as f:
+            pickle.dump(state, f)
+        
+        print(f"💾 Curriculum state saved to {filepath}")
+
+    def load(self, filepath: str):
+        """Load the curriculum manager state from a file."""
+        if not os.path.exists(filepath):
+            print(f"Curriculum state file not found: {filepath}")
+            return False
+        
+        try:
+            with open(filepath, 'rb') as f:
+                state = pickle.load(f)
+            
+            # Restore state
+            self.current_max_distance = state["current_max_distance"]
+            self.recent_successes = state["recent_successes"]
+            self.episode_count = state["episode_count"]
+            self.min_distance = state["min_distance"]
+            # Verify config matches
+            loaded_config = state.get("config", {})
+            if loaded_config.get("success_threshold") != self.success_threshold:
+                print(f"[Curriculum] WARNING: success_threshold changed! "
+                      f"Old: {loaded_config.get('success_threshold'):.2f}, New: {self.success_threshold:.2f}")
+            
+            if loaded_config.get('failure_threshold') != self.failure_threshold:
+                print(f"[Curriculum] WARNING: failure_threshold changed! "
+                      f"Old: {loaded_config.get('failure_threshold'):.2f}, New: {self.failure_threshold:.2f}")
+            
+            print(f"[Curriculum] Loaded state: max_distance={self.current_max_distance:.2f}m, "
+                  f"episodes={self.episode_count}, success_rate={np.mean(self.recent_successes) if self.recent_successes else 0:.1%}")
+            return True
+        
+        except Exception as e:
+            print(f"Failed to load curriculum state: {e}. Starting fresh.")
+            return False
 
     def sample_goal_distance(self) -> float:
         """

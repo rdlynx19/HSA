@@ -1,0 +1,1 @@
+scp -r hsa_gym/ kjl5954@sheep.mech.northwestern.edu:/home/kjl5954/
