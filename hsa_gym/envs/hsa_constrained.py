@@ -383,11 +383,28 @@ class HSAEnv(CustomMujocoEnv):
         # Body out of range
         z_a = self.get_body_com("block_a")[2]
         z_b = self.get_body_com("block_b")[2]
+        
+        if self._enable_terrain:
+            blocka_xy = self.get_body_com("block_a")[:2]
+            blockb_xy = self.get_body_com("block_b")[:2]
 
-        if z_a > 0.5: reasons.append("block_a_too_high")
-        if z_b > 0.5: reasons.append("block_b_too_high")
-        if z_a < -0.5: reasons.append("block_a_too_low")
-        if z_b < -0.5: reasons.append("block_b_too_low")
+            terrain_a_z = self._get_spawn_height(blocka_xy[0], blocka_xy[1])
+            terrain_b_z = self._get_spawn_height(blockb_xy[0], blockb_xy[1])
+            # Safe margin above terrain
+            safe_margin = 0.5
+            if z_a > (terrain_a_z + safe_margin):
+                reasons.append("block_a_too_high")
+            if z_b > (terrain_b_z + safe_margin):
+                reasons.append("block_b_too_high")
+            if z_a < (terrain_a_z - safe_margin):
+                reasons.append("block_a_too_low")
+            if z_b < (terrain_b_z - safe_margin):
+                reasons.append("block_b_too_low")
+        else:
+            if z_a > 0.5: reasons.append("block_a_too_high")
+            if z_b > 0.5: reasons.append("block_b_too_high")
+            if z_a < -0.5: reasons.append("block_a_too_low")
+            if z_b < -0.5: reasons.append("block_b_too_low")
 
         # Observation issues
         if np.isnan(observation).any(): reasons.append("obs_nan")
