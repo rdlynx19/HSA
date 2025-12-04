@@ -41,6 +41,7 @@ class GoalCurriculumManager:
         # Track recent episodes
         self.recent_successes = []
         self.episode_count = 0
+        self.episodes_since_last_change = 0
 
     def save(self, filepath: str):
         """Save the current state of the curriculum manager to a file."""
@@ -48,6 +49,7 @@ class GoalCurriculumManager:
             "current_max_distance": self.current_max_distance,
             "recent_successes": self.recent_successes,
             "episode_count": self.episode_count,
+            "episodes_since_last_change": self.episodes_since_last_change,
             "min_distance": self.min_distance,
             "config": {
                 "initial_range": self.initial_range,
@@ -80,6 +82,7 @@ class GoalCurriculumManager:
             self.current_max_distance = state["current_max_distance"]
             self.recent_successes = state["recent_successes"]
             self.episode_count = state["episode_count"]
+            self.episodes_since_last_change = state.get("episodes_since_last_change", 0)
             self.min_distance = state["min_distance"]
             # Verify config matches
             loaded_config = state.get("config", {})
@@ -133,13 +136,18 @@ class GoalCurriculumManager:
         """Record episode outcome and potentially update curriculum"""
         self.recent_successes.append(success)
         self.episode_count += 1
+        self.episodes_since_last_change += 1
         
         # Keep only recent window
         if len(self.recent_successes) > self.window_size:
             self.recent_successes.pop(0)
         
-        # Only update after minimum episodes
-        if self.episode_count < self.min_episodes:
+        # # Only update after minimum episodes
+        # if self.episode_count < self.min_episodes:
+        #     return
+        
+        # Only update after minimum episodes since last change
+        if self.episodes_since_last_change < self.min_episodes:
             return
         
         # Calculate success rate
@@ -157,6 +165,7 @@ class GoalCurriculumManager:
                     print(f"📈 Curriculum expanded! Max distance: {old_max:.2f}m → {self.current_max_distance:.2f}m (Success rate: {success_rate:.1%})")
                     # Reset tracking after expansion
                     self.recent_successes = []
+                    self.episodes_since_last_change = 0
             
             # Contract curriculum if struggling
             elif success_rate < self.failure_threshold:
@@ -169,6 +178,7 @@ class GoalCurriculumManager:
                     print(f"📉 Curriculum contracted! Max distance: {old_max:.2f}m → {self.current_max_distance:.2f}m (Success rate: {success_rate:.1%})")
                     # Reset tracking after contraction
                     self.recent_successes = []
+                    self.episodes_since_last_change = 0
     
     def get_curriculum_info(self) -> dict:
         """Get current curriculum statistics"""
@@ -177,5 +187,6 @@ class GoalCurriculumManager:
             "curriculum/max_distance": self.current_max_distance,
             "curriculum/success_rate": success_rate,
             "curriculum/episode_count": self.episode_count,
+            "curriculum/episodes_since_change": self.episodes_since_last_change,
             "curriculum/progress": (self.current_max_distance - self.initial_range[1]) / (self.target_range[1] - self.initial_range[1])
         }

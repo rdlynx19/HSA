@@ -372,8 +372,17 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
 
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_random")
-    model_path = os.path.join(checkpoint_dir, "model_27500000_steps.zip")
 
-    
+    # Demo 1 No Curriculum
+    # checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_random")
+    # model_path = os.path.join(checkpoint_dir, "model_27000000_steps.zip")
+
+    # Demo 2 Craters
+    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_curriculum_craters_explore")
+    model_path = os.path.join(checkpoint_dir, "model_21000000_steps.zip")
+
+    # Demo 3 Flat
+    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_curriculum_flat_small")
+    model_path = os.path.join(checkpoint_dir, "model_8000000_steps.zip")
+
     analyze_actions(checkpoint_dir, model_path, num_episodes=2)

@@ -37,10 +37,10 @@ curriculum:
   initial_range: [1.5, 1.8]      # Start where your 27.5M model succeeded
   target_range: [1.5, 4.5]        # End at full arena size
   success_threshold: 0.75         # Expand when 75% of episodes succeed
-  failure_threshold: 0.40         # Contract when <40% of episodes succeed
-  expansion_step: 0.3             # Expand by 0.3m each time
+  failure_threshold: 0.30         # Contract when <30% of episodes succeed
+  expansion_step: 0.15             # Expand by 0.15m each time
   window_size: 100                # Track last 100 episodes
-  min_episodes_before_expand: 50  # Wait 50 episodes before first expansion
+  min_episodes_before_expand: 100  # Wait 100 episodes before first expansion
   dead_zone_radius: 1.2           # Minimum distance from origin
 
 model:

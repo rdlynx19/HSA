@@ -621,10 +621,10 @@ class HSAEnv(CustomMujocoEnv):
             marker_x, marker_y, marker_z = goal_pos
 
         else:
-            ranges = [(-1.8, -1.5), (1.5, 1.8)]
+            ranges = [(-3.0, -1.5), (1.5, 3.0)]
             low, high = ranges[np.random.choice([0, 1])]
             marker_x = np.random.uniform(low, high)
-            marker_y = np.random.uniform(-1.8, 1.8)
+            marker_y = np.random.uniform(-1.0, 1.0)
             marker_z = 0.1
 
         self._update_goal_marker(goal_position=[marker_x, marker_y, marker_z])
