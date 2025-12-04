@@ -3,3 +3,5 @@ mujoco_venv/
 *__pycache__
 torsional.egg-info/
 *MUJOCO_LOG.TXT
+*.zip
+checkpoints/*
