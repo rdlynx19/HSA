@@ -4,7 +4,7 @@ import noise
 def ensure_flat_spawn_zone(terrain, 
                            spawn_center_x  = 0.5, 
                            spawn_center_y = 0.5, 
-                           spawn_radius = 0.0005):
+                           spawn_radius = 0.05):
     """
     Ensure a flat area in the terrain for robot spawning
     """
@@ -336,8 +336,8 @@ def generate_terrain(terrain_type,
         **kwargs: additional parameters for specific terrain types
     """
     if terrain_type == 'wavy':
-        scale = kwargs.get('scale', 0.5)
-        amp = kwargs.get('amp', 0.5)
+        scale = kwargs.get('scale', 0.3)
+        amp = kwargs.get('amp', 0.15)
         terrain = generate_wavy_field(width, height, scale, amp)
 
     elif terrain_type == 'perlin':
@@ -345,7 +345,7 @@ def generate_terrain(terrain_type,
         terrain = generate_perlin_noise(width, height, scale)
 
     elif terrain_type == 'stairs':
-        step_height = kwargs.get('step_height', 0.02)
+        step_height = kwargs.get('step_height', 0.08)
         pixels_per_step = kwargs.get('pixels_per_step', 5)
         terrain = generate_stairs_terrain(width, height, step_height, pixels_per_step)
 
@@ -353,8 +353,8 @@ def generate_terrain(terrain_type,
         terrain = generate_flat_terrain(width, height)
 
     elif terrain_type == 'incline':
-        angle = kwargs.get('angle', 10)
-        direction = kwargs.get('direction', 'x')
+        angle = kwargs.get('angle', 20)
+        direction = kwargs.get('direction', 'y')
         terrain = generate_incline_terrain(width, height, angle, direction)
     
     elif terrain_type == 'flat_with_incline':
@@ -383,17 +383,17 @@ def generate_terrain(terrain_type,
                                       ramp_height, direction, smooth_edges)
     
     elif terrain_type == 'craters':
-        num_craters = kwargs.get('num_craters', 75)
+        num_craters = kwargs.get('num_craters', 25)
         crater_radius_range = kwargs.get('crater_radius_range', (3, 5))
-        crater_depth_range = kwargs.get('crater_depth_range', (0.15, 0.25))
+        crater_depth_range = kwargs.get('crater_depth_range', (0.10, 0.20))
         terrain = generate_crater_terrain(width, height, num_craters, 
                                       crater_radius_range, crater_depth_range)
     
     elif terrain_type == 'poles':
-        num_poles = kwargs.get('num_poles', 14)
-        pole_radius_range = kwargs.get('pole_radius_range', (3, 6))
-        pole_height_range = kwargs.get('pole_height_range', (0.9, 1.5))
-        min_spacing = kwargs.get('min_spacing', 12)
+        num_poles = kwargs.get('num_poles', 75)
+        pole_radius_range = kwargs.get('pole_radius_range', (1, 1))
+        pole_height_range = kwargs.get('pole_height_range', (1.5, 2.5))
+        min_spacing = kwargs.get('min_spacing', 3)
         terrain = generate_poles_terrain(width, height, num_poles, pole_radius_range,
                                      pole_height_range, min_spacing)
     else:
@@ -402,7 +402,7 @@ def generate_terrain(terrain_type,
     if ensure_flat_spawn:
         spawn_center_x = kwargs.get('spawn_center_x', 0.5)
         spawn_center_y = kwargs.get('spawn_center_y', 0.5)
-        spawn_radius = kwargs.get('spawn_radius', 0.15)
+        spawn_radius = kwargs.get('spawn_radius', 0.05)
         terrain = ensure_flat_spawn_zone(terrain, 
                                          spawn_center_x, 
                                          spawn_center_y, 

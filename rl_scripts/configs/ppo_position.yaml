@@ -1,16 +1,16 @@
 env:
-  xml_file: "hsaTerrainNoStiffModel.xml"
+  xml_file: "hsaLooseModel.xml"
   n_envs: 16
   frame_skip: 20
   actuator_group: [1]
   action_group: [1]
   # === REWARD STRUCTURE ===
   # Forward progress (not main objective)
-  forward_reward_weight: 6.0
+  forward_reward_weight: 10.0
 
   # Efficiency costs (minor - encourage good behaviour)
   ctrl_cost_weight: 0.001
-  contact_cost_weight: 0.0005
+  contact_cost_weight: 0.000
   acc_cost_weight: 0.00001
 
   # Direction costs (moderate - enforce straight movement)
@@ -21,15 +21,15 @@ env:
   joint_vel_cost_weight: 0.0005
 
   # Goal achievement (primary - reach target position)
-  distance_reward_weight: 10.0
+  distance_reward_weight: 20.0
   # Stability/survival (critical - prevent early termination)
-  alive_bonus: 0.03 # (reward for staying alive each step)
+  alive_bonus: 0.0 # (reward for staying alive each step)
   early_termination_penalty: 0.1 # (big penalty for falling/failing)
   smooth_positions: true
   max_increment: 0.1785
   max_episode_steps: 4000
   enable_terrain: true
-  terrain_type: "craters"
+  terrain_type: "wavy"
   goal_position: [1.5, 0.0, 0.1]
 
 curriculum:
@@ -51,12 +51,12 @@ model:
   gamma: 0.99
   gae_lambda: 0.95
   clip_range: 0.2
-  ent_coef: 0.006
+  ent_coef: 0.007
 
 train:
-  total_timesteps: 100_000_000
+  total_timesteps: 200_000_000
   log_dir: "./logs/"
-  run_name: "ppo_curriculum_craters"
+  run_name: "ppo_curriculum_waves"
   checkpoint_dir: "./checkpoints/"
   checkpoint_freq: 500_000
   resume: true

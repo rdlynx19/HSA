@@ -57,11 +57,15 @@ class HSAEnv(CustomMujocoEnv):
         self._enable_terrain = enable_terrain
         self._terrain_type = terrain_type
 
-        self._qvel_limit = 1000.0 # Max joint velocity for termination condition
+        self._qvel_limit = 2000.0 # Max joint velocity for termination condition
         self._qacc_limit = 15000.0 # Max joint acceleration for termination
 
         # Step Count
         self._step_count = 0
+
+        # Terrain Bounds
+        self._terrain_z_min = 0.0
+        self._terrain_z_max = 0.0
 
         CustomMujocoEnv.__init__(self,
                                  xml_file,
@@ -156,6 +160,30 @@ class HSAEnv(CustomMujocoEnv):
         """
         self.curriculum_manager = curriculum_manager
 
+    def _compute_terrain_bounds(self):
+        """
+        Compute actual world height bounds for the terrain. Must be called after terrain is generated.
+        """
+        if not self._enable_terrain:
+            self._terrain_z_min = 0.0
+            self._terrain_z_max = 0.0
+            return
+
+        hfield_size = self.model.hfield_size[0]
+        x_half, y_half, z_max, base_height = hfield_size
+
+        nrow = self.model.hfield_nrow[0]
+        ncol = self.model.hfield_ncol[0]
+        terrain_data = self.model.hfield_data.reshape(nrow, ncol)
+        actual_heights = base_height + terrain_data * z_max
+        
+        store_min = terrain_data.min()
+        store_max = terrain_data.max()
+
+        self._terrain_z_min = base_height + store_min * z_max
+        self._terrain_z_max = base_height + store_max * z_max
+        print(f"[Terrain] Height bounds: min={self._terrain_z_min:.3f}m, max={self._terrain_z_max:.3f}m")
+
     def _get_spawn_height(self, x, y) -> float:
         """
         Get the spawn height for the terrain at the given (x, y) coordinates.
@@ -174,10 +202,10 @@ class HSAEnv(CustomMujocoEnv):
 
        # Get normalized height (0 to 1)
         terrain_data = self.model.hfield_data.reshape(nrow, ncol)
-        normalized_height = terrain_data[grid_i, grid_j]
+        stored_height = terrain_data[grid_i, grid_j]
 
            # Convert to actual height
-        actual_height = base_height + normalized_height * z_max
+        actual_height = base_height + stored_height * z_max
         
         return actual_height
 
@@ -385,20 +413,18 @@ class HSAEnv(CustomMujocoEnv):
         z_b = self.get_body_com("block_b")[2]
         
         if self._enable_terrain:
-            blocka_xy = self.get_body_com("block_a")[:2]
-            blockb_xy = self.get_body_com("block_b")[:2]
-
-            terrain_a_z = self._get_spawn_height(blocka_xy[0], blocka_xy[1])
-            terrain_b_z = self._get_spawn_height(blockb_xy[0], blockb_xy[1])
             # Safe margin above terrain
             safe_margin = 0.5
-            if z_a > (terrain_a_z + safe_margin):
+            upper_limit = self._terrain_z_max + safe_margin
+            lower_limit = self._terrain_z_min - safe_margin
+
+            if z_a > (upper_limit):
                 reasons.append("block_a_too_high")
-            if z_b > (terrain_b_z + safe_margin):
+            if z_b > (upper_limit):
                 reasons.append("block_b_too_high")
-            if z_a < (terrain_a_z - safe_margin):
+            if z_a < (lower_limit):
                 reasons.append("block_a_too_low")
-            if z_b < (terrain_b_z - safe_margin):
+            if z_b < (lower_limit):
                 reasons.append("block_b_too_low")
         else:
             if z_a > 0.5: reasons.append("block_a_too_high")

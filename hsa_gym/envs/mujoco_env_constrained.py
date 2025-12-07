@@ -194,11 +194,7 @@ class CustomMujocoEnv(gym.Env):
             terrain_data = utils.generate_terrain(
                 terrain_type=self._terrain_type,
                 width=model.hfield_nrow[0],
-                height=model.hfield_ncol[0],
-                crater_depth_range=(0.15, 0.25),
-                crater_radius_range=(3, 5), 
-                num_craters=75,
-                                                  )
+                height=model.hfield_ncol[0])
             # Add terrain to the model
             model.hfield_data[:] = terrain_data.flatten()
         
