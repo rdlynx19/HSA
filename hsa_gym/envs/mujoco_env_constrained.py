@@ -16,7 +16,7 @@ except ImportError as e:
         'MuJoCo is not installed, run `pip install "gymnasium[mujoco]"`'
     ) from e
 
-DEFAULT_SIZE = 720 # Default rendering size
+DEFAULT_SIZE = 1920 # Default rendering size
 
 def expand_model_path(model_path: str) -> str:
     """Expand the `model path` to a full path if it starts with '~' or '.' or '/'."""
@@ -194,7 +194,8 @@ class CustomMujocoEnv(gym.Env):
             terrain_data = utils.generate_terrain(
                 terrain_type=self._terrain_type,
                 width=model.hfield_nrow[0],
-                height=model.hfield_ncol[0])
+                height=model.hfield_ncol[0],
+                ensure_flat_spawn=False)
             # Add terrain to the model
             model.hfield_data[:] = terrain_data.flatten()
         

@@ -30,6 +30,7 @@ class HSAEnv(CustomMujocoEnv):
                  distance_reward_weight: float = 1.0,
                  early_termination_penalty: float = 50.0,
                  joint_vel_cost_weight: float = 1e-3,
+                 stagnation_penalty_weight: float = 0.15,
                  alive_bonus: float = 0.1,
                  max_increment: float = 3.14,
                  enable_terrain: bool = False,
@@ -47,6 +48,7 @@ class HSAEnv(CustomMujocoEnv):
         self._distance_reward_weight = distance_reward_weight
         self._alive_bonus = alive_bonus 
         self._joint_vel_cost_weight = joint_vel_cost_weight
+        self._stagnation_penalty_weight = stagnation_penalty_weight
 
         self._actuator_group = actuator_group
         self._clip_actions = clip_actions
@@ -66,6 +68,10 @@ class HSAEnv(CustomMujocoEnv):
         # Terrain Bounds
         self._terrain_z_min = 0.0
         self._terrain_z_max = 0.0
+
+        # Position Checking
+        self._position_history = []
+        self._progress_window = 50
 
         CustomMujocoEnv.__init__(self,
                                  xml_file,
@@ -558,17 +564,31 @@ class HSAEnv(CustomMujocoEnv):
             self._distance_reward_weight * 
             self.distance_cost(self._goal_position)
         )
-        # Reward shaping to encourage getting closer to goal
-        distance = np.linalg.norm(
-            self._compute_COM() - self._goal_position[:2]
-        )
-        reward_shaping = 0.5 / (distance + 0.2)
-        distance_reward += reward_shaping
+
+        stagnation_penalty = 0.0
+        # # Progress Check within Window
+        self._position_history.append(self._compute_COM().copy())
+        if len(self._position_history) > self._progress_window:
+            self._position_history.pop(0)
+        if len(self._position_history) >= self._progress_window:
+            start_pos = self._position_history[0]
+            end_pos = self._position_history[-1]
+            progress = np.linalg.norm(end_pos - start_pos)
+            if progress < 0.05:
+                # Penalize lack of progress
+                stagnation_penalty = self._stagnation_penalty_weight * (1.0 - (progress / 0.05))
+
+        # # Reward shaping to encourage getting closer to goal 
+        # distance = np.linalg.norm(
+        #     self._compute_COM() - self._goal_position[:2]
+        # )
+        # reward_shaping = 0.5 / (distance + 0.2)
+        # distance_reward += reward_shaping
 
         costs = (
             ctrl_cost + contact_cost + constraint_cost + acc_cost + joint_vel_cost
             )
-        reward = forward_reward + lateral_reward - costs + distance_reward + constraint_bonus
+        reward = forward_reward + lateral_reward - costs + distance_reward + constraint_bonus - stagnation_penalty
         reward_info = {
             "reward_forward": forward_reward,
             "reward_ctrl_cost": -ctrl_cost,
@@ -579,6 +599,7 @@ class HSAEnv(CustomMujocoEnv):
             "reward_acc_cost": -acc_cost,
             "reward_joint_vel_cost": -joint_vel_cost,
             "reward_distance": distance_reward,
+            "reward_stagnation_penalty": -stagnation_penalty,
             "reward_total_costs": -costs
         }
     
@@ -664,10 +685,10 @@ class HSAEnv(CustomMujocoEnv):
             marker_x, marker_y, marker_z = goal_pos
 
         else:
-            ranges = [(-3.0, -1.5), (1.5, 3.0)]
+            ranges = [(-2.0, -1.5), (1.5, 2.0)]
             low, high = ranges[np.random.choice([0, 1])]
             marker_x = np.random.uniform(low, high)
-            marker_y = np.random.uniform(-1.0, 1.0)
+            marker_y = np.random.uniform(-0.0, 0.0)
             marker_z = 0.1
 
         self._update_goal_marker(goal_position=[marker_x, marker_y, marker_z])

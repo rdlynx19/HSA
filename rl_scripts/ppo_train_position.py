@@ -94,6 +94,8 @@ class RewardComponentLogger(BaseCallback):
                 self.logger.record('reward/joint_vel_cost', info['reward_joint_vel_cost'])
             if 'reward_distance' in info:
                 self.logger.record('reward/distance', info['reward_distance'])
+            if 'reward_stagnation_penalty' in info:
+                self.logger.record('reward/stagnation_penalty', info['reward_stagnation_penalty'])
             if 'reward_total_costs' in info:
                 self.logger.record('reward/total_costs', info['reward_total_costs'])
 
@@ -255,7 +257,8 @@ def main():
             "enable_terrain": config["env"]["enable_terrain"],
             "terrain_type": config["env"]["terrain_type"],
             "goal_position": config["env"]["goal_position"],
-            "distance_reward_weight": config["env"]["distance_reward_weight"]
+            "distance_reward_weight": config["env"]["distance_reward_weight"],
+            "stagnation_penalty_weight": config["env"]["stagnation_penalty_weight"]
         }
 
     if use_curriculum:
