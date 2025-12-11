@@ -4,7 +4,7 @@ import noise
 def ensure_flat_spawn_zone(terrain, 
                            spawn_center_x  = 0.5, 
                            spawn_center_y = 0.5, 
-                           spawn_radius = 0.05):
+                           spawn_radius = 0.15):
     """
     Ensure a flat area in the terrain for robot spawning
     """
@@ -320,6 +320,190 @@ def generate_poles_terrain(width, height, num_poles=8, pole_radius_range=(3, 6),
     
     return terrain
 
+def generate_corridor_terrain(width, height, 
+                              corridor_width=0.85,
+                              corridor_axis='y',
+                              corridor_center=0.5,
+                              wall_height=0.5):
+    """
+    Generate narrow corridor with walls along specified axis
+    """
+    terrain = np.zeros((width, height))
+    
+    WORLD_SIZE = 10.0
+    
+    if corridor_axis == 'y':
+        cell_size = WORLD_SIZE / width  # 10m / 50 cells = 0.2m per cell
+        
+        # Calculate cells needed (no forced rounding to even!)
+        corridor_cells_float = corridor_width / cell_size
+        corridor_cells = max(1, int(np.round(corridor_cells_float)))  # At least 1 cell
+        
+        actual_width = corridor_cells * cell_size
+        
+        center_i = int(corridor_center * width)
+        
+        # Handle both odd and even cell counts
+        if corridor_cells % 2 == 0:
+            # Even number of cells - symmetric split
+            corridor_half_cells = corridor_cells // 2
+            start_i = max(0, center_i - corridor_half_cells)
+            end_i = min(width, center_i + corridor_half_cells)
+        else:
+            # Odd number of cells - center cell + symmetric sides
+            corridor_half_cells = corridor_cells // 2
+            start_i = max(0, center_i - corridor_half_cells)
+            end_i = min(width, center_i + corridor_half_cells + 1)  # +1 for center cell
+        
+        # Fill with walls
+        terrain[:, :] = wall_height
+        
+        # Carve out corridor
+        terrain[start_i:end_i, :] = 0.0
+        
+        actual_cells = end_i - start_i
+        actual_width = actual_cells * cell_size
+        
+        print(f"[Corridor-Y] Request: {corridor_width:.2f}m → Actual: {actual_width:.2f}m ({actual_cells} cells)")
+        
+    elif corridor_axis == 'x':
+        cell_size = WORLD_SIZE / height  # 10m / 50 cells = 0.2m per cell
+        
+        corridor_cells_float = corridor_width / cell_size
+        corridor_cells = max(1, int(np.round(corridor_cells_float)))
+        
+        actual_width = corridor_cells * cell_size
+        
+        center_j = int(corridor_center * height)
+        
+        if corridor_cells % 2 == 0:
+            corridor_half_cells = corridor_cells // 2
+            start_j = max(0, center_j - corridor_half_cells)
+            end_j = min(height, center_j + corridor_half_cells)
+        else:
+            corridor_half_cells = corridor_cells // 2
+            start_j = max(0, center_j - corridor_half_cells)
+            end_j = min(height, center_j + corridor_half_cells + 1)
+        
+        terrain[:, :] = wall_height
+        terrain[:, start_j:end_j] = 0.0
+        
+        actual_cells = end_j - start_j
+        actual_width = actual_cells * cell_size
+        
+        print(f"[Corridor-X] Request: {corridor_width:.2f}m → Actual: {actual_width:.2f}m ({actual_cells} cells)")
+    
+    else:
+        raise ValueError(f"corridor_axis must be 'x' or 'y', got: {corridor_axis}")
+    
+    return terrain
+
+def generate_spiral_track(width, height,
+                         start_radius=0.5,
+                         end_radius=4.0,
+                         num_turns=2.0,
+                         track_width=0.8,
+                         wall_height=0.5):
+    """
+    Generate a spiral track starting from origin (0, 0)
+    
+    Args:
+        width: grid width
+        height: grid height
+        start_radius: starting radius in meters (should be small, like 0.5m)
+        end_radius: ending radius in meters (outer edge, like 4.0m)
+        num_turns: number of complete 360° rotations
+        track_width: width of the track in meters
+        wall_height: height of walls
+    
+    Returns:
+        terrain: height field with spiral track
+        
+    The spiral always starts near (0, 0) where the robot spawns
+    and spirals outward to the edge of the terrain.
+    
+    Examples:
+        # Gentle outward spiral (2 turns)
+        start_radius=0.5, end_radius=4.0, num_turns=2.0
+        
+        # Tight spiral (3 turns)
+        start_radius=0.3, end_radius=4.5, num_turns=3.0
+        
+        # Wide gentle spiral (1.5 turns)
+        start_radius=0.8, end_radius=3.5, num_turns=1.5
+    """
+    terrain = np.zeros((width, height))
+    
+    WORLD_SIZE = 10.0
+    cell_size = WORLD_SIZE / width
+    
+    # Fill with walls
+    terrain[:, :] = wall_height
+    
+    # Track width parameters
+    half_width = track_width / 2
+    
+    # Grid center (corresponds to world origin 0, 0)
+    center_i = width // 2
+    center_j = height // 2
+    
+    # Total angle to cover
+    total_angle = 2 * np.pi * num_turns
+    
+    # For each grid cell, determine if it's on the spiral
+    for i in range(width):
+        for j in range(height):
+            # Convert to world coordinates (centered at origin)
+            x = (i - center_i) * cell_size
+            y = (j - center_j) * cell_size
+            
+            # Calculate polar coordinates from origin
+            r = np.sqrt(x**2 + y**2)
+            theta = np.arctan2(y, x)
+            
+            # Normalize angle to [0, 2π]
+            if theta < 0:
+                theta += 2 * np.pi
+            
+            # For each possible turn the spiral makes, check if point is on spiral
+            # (handles the multi-turn wrapping)
+            for turn_num in range(int(np.ceil(num_turns)) + 1):
+                # Angle with turn offset
+                angle = theta + (turn_num * 2 * np.pi)
+                
+                # Only consider angles within total spiral range
+                if angle > total_angle:
+                    continue
+                
+                # Calculate expected radius at this angle on the spiral
+                # Archimedean spiral: r = a + b * theta
+                # We want: r(0) = start_radius, r(total_angle) = end_radius
+                # So: r = start_radius + (end_radius - start_radius) * (angle / total_angle)
+                progress = angle / total_angle  # 0 to 1
+                expected_radius = start_radius + (end_radius - start_radius) * progress
+                
+                # Check if current point's radius matches expected radius (within track width)
+                if abs(r - expected_radius) <= half_width:
+                    terrain[i, j] = 0.0
+                    break  # Found valid spiral section
+    
+    # Calculate actual track width in cells
+    corridor_cells = max(1, int(np.round(track_width / cell_size)))
+    actual_width = corridor_cells * cell_size
+    
+    # Calculate approximate spiral length
+    # Arc length of spiral ≈ (avg_radius) * total_angle
+    avg_radius = (start_radius + end_radius) / 2
+    spiral_length = avg_radius * total_angle
+    
+    print(f"[Spiral Track] Origin→Outward, "
+          f"R: {start_radius:.1f}→{end_radius:.1f}m, "
+          f"Turns: {num_turns:.1f}, "
+          f"Width: {actual_width:.2f}m, "
+          f"Length: ~{spiral_length:.1f}m")
+    
+    return terrain
+
 def generate_terrain(terrain_type, 
                      width=50, 
                      height=50, 
@@ -396,13 +580,37 @@ def generate_terrain(terrain_type,
         min_spacing = kwargs.get('min_spacing', 3)
         terrain = generate_poles_terrain(width, height, num_poles, pole_radius_range,
                                      pole_height_range, min_spacing)
+    elif terrain_type == 'corridor':
+        corridor_width = kwargs.get('corridor_width', 0.60)
+        corridor_axis = kwargs.get('corridor_axis', 'y')
+        corridor_center = kwargs.get('corridor_center', 0.5)
+        wall_height = kwargs.get('wall_height', 0.5)
+        terrain = generate_corridor_terrain(width, height, corridor_width,
+                                            corridor_axis, corridor_center, wall_height)
+    
+    elif terrain_type == 'spiral':
+        start_radius = kwargs.get('start_radius', 0.5)    # Start small (near origin)
+        end_radius = kwargs.get('end_radius', 4.0)        # End large (at edge)
+        num_turns = kwargs.get('num_turns', 2.0)
+        track_width = kwargs.get('track_width', 0.8)
+        wall_height = kwargs.get('wall_height', 0.5)
+        
+        terrain = generate_spiral_track(
+            width, height,
+            start_radius=start_radius,
+            end_radius=end_radius,
+            num_turns=num_turns,
+            track_width=track_width,
+            wall_height=wall_height
+        )
+
     else:
         raise ValueError(f"Unknown terrain type: {terrain_type}")
-    
+     
     if ensure_flat_spawn:
         spawn_center_x = kwargs.get('spawn_center_x', 0.5)
         spawn_center_y = kwargs.get('spawn_center_y', 0.5)
-        spawn_radius = kwargs.get('spawn_radius', 0.05)
+        spawn_radius = kwargs.get('spawn_radius', 0.075)
         terrain = ensure_flat_spawn_zone(terrain, 
                                          spawn_center_x, 
                                          spawn_center_y, 
