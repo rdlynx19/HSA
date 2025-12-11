@@ -111,6 +111,13 @@ class RewardComponentLogger(BaseCallback):
             if 'curriculum/success_threshold' in info:
                 self.logger.record('curriculum/success_threshold', info['curriculum/success_threshold'])
             
+            # Checkpoints logging
+            if 'checkpoints_collected' in info:
+                self.logger.record('checkpoints/collected', info['checkpoints_collected'])
+            if 'total_checkpoints' in info:
+                self.logger.record('checkpoints/total', info['total_checkpoints'])
+            if 'checkpoint_progress' in info:
+                self.logger.record('checkpoints/progress', info['checkpoint_progress'])
         return True
 
 class SaveVecNormalizeCallback(BaseCallback):
@@ -258,7 +265,15 @@ def main():
             "terrain_type": config["env"]["terrain_type"],
             "goal_position": config["env"]["goal_position"],
             "distance_reward_weight": config["env"]["distance_reward_weight"],
-            "stagnation_penalty_weight": config["env"]["stagnation_penalty_weight"]
+            "stagnation_penalty_weight": config["env"]["stagnation_penalty_weight"],
+            "num_turns": config["env"].get("num_turns", 2.0),
+            "start_radius": config["env"].get("start_radius", 0.5),
+            "end_radius": config["env"].get("end_radius", 4.0),
+            "num_checkpoints": config["env"].get("num_checkpoints", 8),
+            "max_episode_steps": config["env"]["max_episode_steps"],
+            "checkpoint_reward": config["env"].get("checkpoint_reward", 30.0),
+            "checkpoint_radius": config["env"].get("checkpoint_radius", 0.4),
+            "ensure_flat_spawn": config["env"].get("ensure_flat_spawn", True)
         }
 
     if use_curriculum:

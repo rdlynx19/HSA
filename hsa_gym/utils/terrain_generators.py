@@ -610,7 +610,7 @@ def generate_terrain(terrain_type,
     if ensure_flat_spawn:
         spawn_center_x = kwargs.get('spawn_center_x', 0.5)
         spawn_center_y = kwargs.get('spawn_center_y', 0.5)
-        spawn_radius = kwargs.get('spawn_radius', 0.075)
+        spawn_radius = kwargs.get('spawn_radius', 0.085)
         terrain = ensure_flat_spawn_zone(terrain, 
                                          spawn_center_x, 
                                          spawn_center_y, 

@@ -6,7 +6,7 @@ env:
   action_group: [1]
   # === REWARD STRUCTURE ===
   # Forward progress (not main objective)
-  forward_reward_weight: 10.0
+  forward_reward_weight: 15.0
 
   # Efficiency costs (minor - encourage good behaviour)
   ctrl_cost_weight: 0.00
@@ -21,17 +21,27 @@ env:
   joint_vel_cost_weight: 0.0005
 
   # Goal achievement (primary - reach target position)
-  distance_reward_weight: 20.0
+  distance_reward_weight: 30.0
   # Stability/survival (critical - prevent early termination)
   alive_bonus: 0.0 # (reward for staying alive each step)
   early_termination_penalty: 0.1 # (big penalty for falling/failing)
   stagnation_penalty_weight: 0.1  # Penalty for lack of progress
   smooth_positions: true
   max_increment: 0.1785
-  max_episode_steps: 4000
+  max_episode_steps: 8000
   enable_terrain: true
-  terrain_type: "corridor"
+  terrain_type: "spiral"
   goal_position: [1.5, 0.0, 0.1]
+
+  num_turns: 2.0
+  start_radius: 0.5
+  end_radius: 4.0
+  num_checkpoints: 8
+  checkpoint_reward: 200.0
+  checkpoint_radius: 0.4
+
+  ensure_flat_spawn: true
+
 
 curriculum:
   enabled: false  # Set to false to disable curriculum learning
@@ -52,13 +62,13 @@ model:
   gamma: 0.99
   gae_lambda: 0.95
   clip_range: 0.2
-  ent_coef: 0.01
+  ent_coef: 0.015
 
 train:
   total_timesteps: 200_000_000
   log_dir: "./logs/"
-  run_name: "ppo_curriculum_corridor"
+  run_name: "ppo_checkpoints_arranged_spiral"
   checkpoint_dir: "./checkpoints/"
   checkpoint_freq: 500_000
-  resume: true
+  resume: false
   

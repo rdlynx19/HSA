@@ -358,13 +358,13 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
         mean_vel = np.mean(np.abs(all_joint_velocities[:, i]))
         print(f"  {actuator_names[i]:3s}: max={max_vel:6.2f}, mean={mean_vel:6.2f}")
     
-    print("\nConstraint Violations:")
-    for i in range(4):
-        max_diff = np.max(all_constraint_diffs[:, i])
-        violations = np.sum(all_constraint_diffs[:, i] > np.pi)
-        violation_pct = (violations / len(all_constraint_diffs)) * 100
-        print(f"  {pair_names[i]:15s}: max_diff={max_diff:.3f} rad, "
-              f"violations={violations} ({violation_pct:.2f}%)")
+    # print("\nConstraint Violations:")
+    # for i in range(4):
+    #     max_diff = np.max(all_constraint_diffs[:, i])
+    #     violations = np.sum(all_constraint_diffs[:, i] > np.pi)
+    #     violation_pct = (violations / len(all_constraint_diffs)) * 100
+    #     print(f"  {pair_names[i]:15s}: max_diff={max_diff:.3f} rad, "
+    #           f"violations={violations} ({violation_pct:.2f}%)")
     
     print("\n" + "="*60)
     
@@ -378,12 +378,12 @@ if __name__ == "__main__":
     # model_path = os.path.join(checkpoint_dir, "model_27000000_steps.zip")
 
     # # Demo 2 Craters
-    # checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_curriculum_flat_constrained")
-    # model_path = os.path.join(checkpoint_dir, "model_61000000_steps.zip")
+    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_curriculum_corridor")
+    model_path = os.path.join(checkpoint_dir, "model_27000000_steps.zip")
 
     # # # Demo 3 Flat
-    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_curriculum_corridor")
-    model_path = os.path.join(checkpoint_dir, "model_28000000_steps.zip")
+    # checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_checkpoints_arranged_spiral")
+    # model_path = os.path.join(checkpoint_dir, "model_19000000_steps.zip")
 
 
     analyze_actions(checkpoint_dir, model_path, num_episodes=1)

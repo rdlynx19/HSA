@@ -55,7 +55,8 @@ class CustomMujocoEnv(gym.Env):
         smooth_positions: bool = True,
         enable_terrain: bool = False,
         terrain_type: str = "craters",
-        goal_position: list[float] = [1.5, 0.0, 0.1]
+        goal_position: list[float] = [1.5, 0.0, 0.1],
+        ensure_flat_spawn: bool = True,
     ):
         """
         Base abstract class for MuJoCo based environments.
@@ -76,6 +77,8 @@ class CustomMujocoEnv(gym.Env):
         :param smooth_positions: Whether to smooth actuator position changes over frames
         :param enable_terrain: Whether to enable terrain generation
         :param terrain_type: Type of terrain to generate
+        :param goal_position: Position of the goal marker in the simulation
+        :param ensure_flat_spawn: Whether to ensure a flat spawn area in the terrain
         """
 
         self.fullpath = expand_model_path(model_path)
@@ -134,6 +137,8 @@ class CustomMujocoEnv(gym.Env):
             self._actuator_low.copy(),
             self._actuator_high.copy(),
         ]).astype(np.float32)
+
+        self.ensure_flat_spawn = ensure_flat_spawn
 
     def _get_range_bounds(self, 
                           bound_group: list[int] = [1]
@@ -195,7 +200,7 @@ class CustomMujocoEnv(gym.Env):
                 terrain_type=self._terrain_type,
                 width=model.hfield_nrow[0],
                 height=model.hfield_ncol[0],
-                ensure_flat_spawn=False)
+                ensure_flat_spawn=self.ensure_flat_spawn)
             # Add terrain to the model
             model.hfield_data[:] = terrain_data.flatten()
         
@@ -217,11 +222,11 @@ class CustomMujocoEnv(gym.Env):
         :param goal_position: Desired position of the goal marker
         :param marker_name: Name of the marker in the MuJoCo model
         """
-        marker_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, marker_name)
+        marker_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, marker_name)
         if marker_id == -1:
             raise ValueError(f"Marker '{marker_name}' not found in the model.")
         
-        self.model.body_pos[marker_id] = np.array(goal_position, dtype=np.float64)
+        self.model.site_pos[marker_id] = np.array(goal_position, dtype=np.float64)
         mujoco.mj_forward(self.model, self.data)
 
 

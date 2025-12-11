@@ -14,7 +14,7 @@ class HSAEnv(CustomMujocoEnv):
     metadata = {"render_modes": ["human", "rgb_array"]}
 
     def __init__(self, 
-                 xml_file: str = "hsaModel.xml",
+                 xml_file: str = "hsaLooseModel.xml",
                  frame_skip: int = 4,
                  default_camera_config: dict[str, float | int] = {},
                  forward_reward_weight: float = 10.0,
@@ -36,6 +36,14 @@ class HSAEnv(CustomMujocoEnv):
                  enable_terrain: bool = False,
                  terrain_type: str = "craters",
                  goal_position: list[float] = [3.0, 1.0, 0.1],
+                 num_checkpoints: int = 20,
+                 checkpoint_reward: float = 40.0,
+                 checkpoint_radius: float = 0.4,
+                 start_radius: float = 0.5,
+                 end_radius: float = 4.0,
+                 num_turns: int = 2.0,
+                 max_episode_steps: int = 4000,
+                 ensure_flat_spawn: bool = True,
                  **kwargs):
 
         self._forward_reward_weight = forward_reward_weight
@@ -58,6 +66,15 @@ class HSAEnv(CustomMujocoEnv):
         self._max_increment = max_increment
         self._enable_terrain = enable_terrain
         self._terrain_type = terrain_type
+
+        self._num_checkpoints = num_checkpoints
+        self._checkpoint_reward = checkpoint_reward
+        self._checkpoint_radius = checkpoint_radius
+        self._start_radius = start_radius
+        self._end_radius = end_radius
+        self._num_turns = num_turns
+
+        self._max_episode_steps = max_episode_steps
 
         self._qvel_limit = 2000.0 # Max joint velocity for termination condition
         self._qacc_limit = 15000.0 # Max joint acceleration for termination
@@ -84,6 +101,7 @@ class HSAEnv(CustomMujocoEnv):
                                  enable_terrain=enable_terrain,
                                  terrain_type=terrain_type,
                                  goal_position=self._goal_position,   
+                                 ensure_flat_spawn=ensure_flat_spawn,
                                  **kwargs)
 
         self.metadata = {
@@ -159,6 +177,75 @@ class HSAEnv(CustomMujocoEnv):
             self._compute_COM() - np.array(goal_position[:2])
             )
         
+        # Get checkpoint positions
+        if self._terrain_type == "spiral":
+            self._checkpoint_positions = self._calculate_spiral_checkpoints()
+            self._current_checkpoint_index = 0
+        else:
+            self._checkpoint_positions = []
+            self._current_checkpoint_index = 0
+    
+    def _calculate_spiral_checkpoints(self) -> list[NDArray[np.float64]]:
+        """
+        Calculate evenly spaced checkpoints along a CLOCKWISE spiral path.
+        """
+        checkpoints = []
+        total_angle = 2 * np.pi * self._num_turns
+        
+        # CRITICAL: Starting angle offset to align with valley
+        # This is where the valley actually starts in your terrain
+        starting_angle_offset = np.pi   # 90 degrees - ADJUST THIS!
+        
+        for i in range(self._num_checkpoints):
+            progress = (i + 1) / self._num_checkpoints
+            
+            # Clockwise with offset
+            angle = -(progress * total_angle) + starting_angle_offset
+            
+            radius = self._start_radius + (self._end_radius - self._start_radius) * progress
+            
+            x = radius * np.cos(angle)
+            y = radius * np.sin(angle)
+            
+            checkpoints.append(np.array([x, y], dtype=np.float64))
+    
+        return checkpoints
+
+    def _check_checkpoints(self):
+        """
+        Check if the robot has reached the current checkpoint, advance to the next one if so.
+        """
+        if not self._checkpoint_positions:
+            return 0.0
+    
+        # Check if current checkpoint (which is goal) is reached
+        if self._current_checkpoint_index >= len(self._checkpoint_positions):
+            return 0.0  # All checkpoints collected
+        
+        current_pos = self._compute_COM()
+        checkpoint_pos = self._checkpoint_positions[self._current_checkpoint_index]
+        distance = np.linalg.norm(current_pos - checkpoint_pos)
+
+        if distance < self._checkpoint_radius:
+            self._checkpoints_collected.add(self._current_checkpoint_index)
+            bonus = self._checkpoint_reward
+
+            # Advance to next checkpoint
+            self._current_checkpoint_index += 1
+
+            if self._current_checkpoint_index < len(self._checkpoint_positions):
+                next_checkpoint = self._checkpoint_positions[self._current_checkpoint_index]
+                self._goal_position = np.array([next_checkpoint[0], next_checkpoint[1], 0.1], dtype=np.float64)
+                self._update_goal_marker(goal_position=self._goal_position)
+                self._prev_distance_to_goal = np.linalg.norm(current_pos - self._goal_position[:2])
+            else:
+                pass  # All checkpoints collected
+            
+            return bonus
+
+        return 0.0
+
+
     def set_curriculum_manager(self, curriculum_manager):
         """
         Set the curriculum manager for the environment.
@@ -474,32 +561,51 @@ class HSAEnv(CustomMujocoEnv):
         x_velocity, y_velocity = xy_velocity
         x_velocity = np.clip(x_velocity, -5.0, 5.0)
         y_velocity = np.clip(y_velocity, -5.0, 5.0)
+
+        # Check for checkpoint collection
+        checkpoint_bonus = 0.0
+        if self._terrain_type == "spiral" and self._checkpoint_positions:
+            checkpoint_bonus = self._check_checkpoints()
         
         observation = self._get_obs()
         reward, reward_info = self._get_reward(action, x_velocity, y_velocity)
+        reward += checkpoint_bonus
+        
         terminated, term_reasons = self._check_termination(observation)
-
         truncated = False
+        success = False
+
+        if self._checkpoint_positions and self._terrain_type == "spiral":
+            if self._current_checkpoint_index >= len(self._checkpoint_positions):
+                reward += 100.0
+                early_term_pen = 0.0  # No penalty if goal is reached
+                terminated = True
+                term_reasons.append("goal_reached")
+                success = True
+
+        # For other terrains: check if close to goal
+        if self._terrain_type != "spiral":
+            current_distance = np.linalg.norm(
+                self._compute_COM() - self._goal_position[:2]
+            )
+            if current_distance < 0.20:
+                    reward += 40.0
+                    early_term_pen = 0.0  # No penalty if goal is reached
+                    terminated = True
+                    term_reasons.append("goal_reached")
+                    success = True
+
         # Scale early termination penalty
-        if terminated and not truncated:
-            steps_lost = 3000 - self._step_count
+        if terminated and not truncated and not success:
+            steps_lost = self._max_episode_steps - self._step_count
             early_term_pen = (self._early_termination_penalty) * steps_lost
+            early_term_pen = 100.0
         else: 
             early_term_pen = 0.0
        
         alive_bonus = (
             self._alive_bonus if not (terminated or truncated) else 0.0
         )
-
-        # Bonus for reaching close to goal
-        current_distance = np.linalg.norm(
-            self._compute_COM() - self._goal_position[:2]
-        )
-        if current_distance < 0.20:
-            reward += 40.0
-            early_term_pen = 0.0  # No penalty if goal is reached
-            terminated = True
-            term_reasons.append("goal_reached")
 
         reward = reward + alive_bonus - early_term_pen
 
@@ -515,9 +621,18 @@ class HSAEnv(CustomMujocoEnv):
             "tracking_error": np.mean(np.abs(scaled_action - actual_position)),
             "reward_termination": early_term_pen,
             "reward_alive": alive_bonus,
+            "reward_checkpoint_bonus": checkpoint_bonus,   
             "termination_reasons": term_reasons,
             **reward_info
         }
+
+        if self._terrain_type == "spiral":
+            info.update({
+                "checkpoints_collected": len(self._checkpoints_collected),
+                "current_checkpoint_index": self._current_checkpoint_index,
+                "total_checkpoints": self._num_checkpoints,
+                "checkpoint_progress": (len(self._checkpoints_collected) / self._num_checkpoints)
+            })
 
         if self.render_mode == "human":
             self.render()
@@ -579,10 +694,10 @@ class HSAEnv(CustomMujocoEnv):
                 stagnation_penalty = self._stagnation_penalty_weight * (1.0 - (progress / 0.05))
 
         # # Reward shaping to encourage getting closer to goal 
-        # distance = np.linalg.norm(
+        # current_distance = np.linalg.norm(
         #     self._compute_COM() - self._goal_position[:2]
         # )
-        # reward_shaping = 0.5 / (distance + 0.2)
+        # reward_shaping = 0.1 / (current_distance + 0.5)
         # distance_reward += reward_shaping
 
         costs = (
@@ -677,22 +792,32 @@ class HSAEnv(CustomMujocoEnv):
             len(self._actuated_qvel_indices), 
             dtype=np.float32
         )
-         
-        # Curriculum based goal sampling
-        if hasattr(self, 'curriculum_manager') and self.curriculum_manager is not None:
-            # Use curriculum manager to sample goal
-            goal_pos = self.curriculum_manager.sample_goal_position()
-            marker_x, marker_y, marker_z = goal_pos
 
-        else:
-            ranges = [(-2.0, -1.5), (1.5, 2.0)]
-            low, high = ranges[np.random.choice([0, 1])]
-            marker_x = np.random.uniform(low, high)
-            marker_y = np.random.uniform(-0.0, 0.0)
+        self._checkpoints_collected = set()
+        self._current_checkpoint_index = 0
+
+        if self._terrain_type == "spiral":
+            marker_x, marker_y = self._checkpoint_positions[0]
             marker_z = 0.1
+            self._goal_position = np.array([marker_x, marker_y, marker_z], dtype=np.float64)
+            self._update_goal_marker(goal_position=[marker_x, marker_y, marker_z])
+            print(f"[Spiral] Goal set to checkpoint 1/{len(self._checkpoint_positions)}")
+        else:
+            # Curriculum based goal sampling
+            if hasattr(self, 'curriculum_manager') and self.curriculum_manager is not None:
+                # Use curriculum manager to sample goal
+                goal_pos = self.curriculum_manager.sample_goal_position()
+                marker_x, marker_y, marker_z = goal_pos
 
-        self._update_goal_marker(goal_position=[marker_x, marker_y, marker_z])
-        self._goal_position = np.array([marker_x, marker_y, marker_z], dtype=np.float64)
+            else:
+                ranges = [(-2.0, -1.5), (1.5, 2.0)]
+                low, high = ranges[np.random.choice([0, 1])]
+                marker_x = np.random.uniform(low, high)
+                marker_y = np.random.uniform(-0.0, 0.0)
+                marker_z = 0.1
+
+            self._update_goal_marker(goal_position=[marker_x, marker_y, marker_z])
+            self._goal_position = np.array([marker_x, marker_y, marker_z], dtype=np.float64)
 
         self._prev_distance_to_goal = np.linalg.norm(
             self._compute_COM() - self._goal_position[:2]
