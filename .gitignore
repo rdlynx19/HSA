@@ -5,3 +5,4 @@ torsional.egg-info/
 *MUJOCO_LOG.TXT
 *.zip
 checkpoints/*
+build/
