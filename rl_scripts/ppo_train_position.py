@@ -1,3 +1,12 @@
+"""
+PPO Training Script for HSA Environment with Curriculum Learning.
+
+This module provides the main entry point (`main` function) for training a Stable 
+Baselines3 (SB3) PPO agent on the HSAEnv. It handles configuration loading, 
+environment vectorization, observation/reward normalization, dynamic checkpoint 
+resumption, and implementation of a custom goal-based curriculum manager 
+integrated via Gym wrappers and callbacks.
+"""
 import yaml, os, glob, shutil, re
 
 import gymnasium as gym
@@ -17,17 +26,29 @@ from hsa_gym.envs.hsa_constrained import HSAEnv
 config_file = "./configs/ppo_position.yaml"
 xml_file = "../hsa_gym/envs/assets"
 
-def load_config(config_path: str = config_file):
+def load_config(config_path: str = config_file) -> dict:
     """
-    Load training configuration from a YAML file
+    Load training configuration parameters from a YAML file.
+
+    :param config_path: Path to the YAML configuration file.
+    :type config_path: str
+    :returns: A dictionary containing the parsed configuration settings.
+    :rtype: dict
     """
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
     return config
 
-def get_latest_checkpoint(checkpoint_dir: str = "checkpoints/"):
+def get_latest_checkpoint(checkpoint_dir: str = "checkpoints/") -> str | None:
     """
-    Get the latest checkpoint file from the checkpoint directory
+    Get the path to the latest PPO model checkpoint file from a directory.
+
+    It filters out 'final' models and uses the extracted step number for sorting.
+
+    :param checkpoint_dir: Directory containing model checkpoints.
+    :type checkpoint_dir: str
+    :returns: The file path of the latest checkpoint, or None if no valid checkpoints are found.
+    :rtype: str or None
     """
     checkpoint_files = glob.glob(os.path.join(checkpoint_dir, "model_*_steps.zip"))
     if not checkpoint_files:
@@ -41,9 +62,14 @@ def get_latest_checkpoint(checkpoint_dir: str = "checkpoints/"):
     checkpoint_files.sort(key=lambda x: extract_step_number(x))
     return checkpoint_files[-1]
 
-def get_latest_vecnormalize(checkpoint_dir: str = "checkpoints/"):
+def get_latest_vecnormalize(checkpoint_dir: str = "checkpoints/") -> str | None:
     """
-    Get the latest VecNormalize file from the checkpoint directory
+    Get the path to the latest VecNormalize statistics file from a directory.
+
+    :param checkpoint_dir: Directory containing VecNormalize files.
+    :type checkpoint_dir: str
+    :returns: The file path of the latest VecNormalize file, or None if none are found.
+    :rtype: str or None
     """
     vecnorm_files = glob.glob(os.path.join(checkpoint_dir, "vec_normalize_*_steps.pkl"))
     if not vecnorm_files:
@@ -54,7 +80,15 @@ def get_latest_vecnormalize(checkpoint_dir: str = "checkpoints/"):
 
 def extract_step_number(checkpoint_path: str) -> int:
     """
-    Extract the step number from a checkpoint filename
+    Extract the step number (timestep count) from a checkpoint filename.
+
+    The step number is assumed to be the largest sequence of digits in the filename.
+
+    :param checkpoint_path: The full file path of the checkpoint or VecNormalize file.
+    :type checkpoint_path: str
+    :returns: The extracted total timestep count.
+    :rtype: int
+    :raises ValueError: If no step number could be extracted from the filename.
     """
     filename = os.path.basename(checkpoint_path)
     # Find all sequences of digits
@@ -63,19 +97,28 @@ def extract_step_number(checkpoint_path: str) -> int:
     if not numbers:
         raise ValueError(f"Could not extract step number from checkpoint: {checkpoint_path}")
     
+    # Return the largest number found (assumed to be the timestep)
     return int(max(numbers, key=int))
 
 class RewardComponentLogger(BaseCallback):
     """
-    Custom callback to log individual reward components during training
+    Custom Stable Baselines3 callback to log individual reward and cost components 
+    (e.g., forward reward, control cost) contained within the environment's `info` 
+    dictionary at every step.
+
+    It also logs curriculum progress and checkpoint status.
+
+    :param verbose: Verbosity level (0 for silent, 1 for info).
+    :type verbose: int
     """
-    def __init__(self, verbose=0):
+    def __init__(self, verbose: int = 0):
         super().__init__(verbose)
 
     def _on_step(self) -> bool:
         # Access the infos from the vectorized environment
         infos = self.locals.get('infos', [])
         for info in infos:
+            # Reward logging
             if 'reward_forward' in info:
                 self.logger.record('reward/forward', info['reward_forward'])
             if 'reward_ctrl_cost' in info:
@@ -122,9 +165,19 @@ class RewardComponentLogger(BaseCallback):
 
 class SaveVecNormalizeCallback(BaseCallback):
     """
-    Custom callback to save the VecNormalize stats alongside model checkpoints
+    Custom Stable Baselines3 callback to save the VecNormalize observation/reward 
+    statistics file alongside model checkpoints.
+
+    :param save_freq: How often (in environment steps, counts across all environments) to save the file.
+    :type save_freq: int
+    :param save_path: Directory where the file should be saved.
+    :type save_path: str
+    :param name_prefix: Prefix for the saved filename (default: 'vec_normalize').
+    :type name_prefix: str
+    :param verbose: Verbosity level.
+    :type verbose: int
     """
-    def __init__(self, save_freq: int, save_path: str, name_prefix: str = "vec_normalize", verbose=0):
+    def __init__(self, save_freq: int, save_path: str, name_prefix: str = "vec_normalize", verbose: int = 0):
         super().__init__(verbose)
         self.save_freq = save_freq
         self.save_path = save_path
@@ -142,32 +195,56 @@ class SaveVecNormalizeCallback(BaseCallback):
 
 class CurriculumWrapper(gym.Wrapper):
     """
-    Gym Wrapper to integrate curriculum learning into the environment
+    Gym Wrapper to integrate the GoalCurriculumManager logic into the environment's 
+    `step` and `reset` lifecycle.
+
+    This wrapper ensures the environment's internal goal sampling uses the curriculum 
+    manager's state and records episode outcomes to trigger curriculum expansion/contraction.
+
+    :param env: The Gymnasium environment instance to wrap.
+    :type env: gymnasium.Env
+    :param curriculum_manager: The curriculum manager instance.
+    :type curriculum_manager: GoalCurriculumManager
     """
-    def __init__(self, env: gym.Env, curriculum_manager):
+    def __init__(self, env: gym.Env, curriculum_manager: GoalCurriculumManager):
         super().__init__(env)
         self.curriculum_manager = curriculum_manager
+        # Link the curriculum manager to the base environment's sampling logic
         self.env.unwrapped.set_curriculum_manager(curriculum_manager)
 
     def reset(self, **kwargs):
+        """Resets the environment."""
         return self.env.reset(**kwargs)
     
     def step(self, action):
+        """
+        Steps the environment and updates the curriculum manager upon episode termination.
+        """
         obs, reward, terminated, truncated, info = self.env.step(action)
 
         if terminated or truncated:
-            # Define success: reached within 0.15m of goal
+            # Define success: based on 'goal_reached' in termination reasons
             success = "goal_reached" in info.get('termination_reasons', [])
-            # Record in curriculum
+            # Record outcome in curriculum manager
             self.curriculum_manager.record_episode(success)
-            # Add curriculum info to logging
+            # Add current curriculum statistics to the info dictionary for logging
             info.update(self.curriculum_manager.get_curriculum_info())
 
         return obs, reward, terminated, truncated, info
 
-def make_curriculum_env(env_kwargs, curriculum_manager, max_episode_steps):
+def make_curriculum_env(env_kwargs: dict, curriculum_manager: GoalCurriculumManager, max_episode_steps: int):
     """
-    Factory function to create environment with curriculum wrapper
+    Factory function to create a single environment instance wrapped with both 
+    TimeLimit and the CurriculumWrapper.
+
+    :param env_kwargs: Dictionary of keyword arguments for initializing HSAEnv.
+    :type env_kwargs: dict
+    :param curriculum_manager: The pre-initialized curriculum manager instance.
+    :type curriculum_manager: GoalCurriculumManager
+    :param max_episode_steps: The maximum number of steps before environment truncation.
+    :type max_episode_steps: int
+    :returns: A function (`_init`) that returns the wrapped environment instance.
+    :rtype: callable
     """
     def _init():
         env = HSAEnv(**env_kwargs)
@@ -177,9 +254,23 @@ def make_curriculum_env(env_kwargs, curriculum_manager, max_episode_steps):
     return _init
 
 class SaveCurriculumCallback(BaseCallback):
-    """Custom callback to save curriculum state alongside model checkpoints"""
-    def __init__(self, curriculum_manager, save_freq: int, save_path: str, 
-                 name_prefix: str = "curriculum", verbose=0):
+    """
+    Custom Stable Baselines3 callback to save the state of the GoalCurriculumManager 
+    alongside model checkpoints, allowing for seamless curriculum resumption.
+
+    :param curriculum_manager: The curriculum manager instance, or None if curriculum is disabled.
+    :type curriculum_manager: GoalCurriculumManager or None
+    :param save_freq: How often (in environment steps) to save the file.
+    :type save_freq: int
+    :param save_path: Directory where the file should be saved.
+    :type save_path: str
+    :param name_prefix: Prefix for the saved filename.
+    :type name_prefix: str
+    :param verbose: Verbosity level.
+    :type verbose: int
+    """
+    def __init__(self, curriculum_manager: GoalCurriculumManager | None, save_freq: int, save_path: str, 
+                 name_prefix: str = "curriculum", verbose: int = 0):
         super().__init__(verbose)
         self.curriculum_manager = curriculum_manager
         self.save_freq = save_freq
@@ -194,8 +285,15 @@ class SaveCurriculumCallback(BaseCallback):
                 print(f"[Curriculum] Saved to {path} at step {self.num_timesteps}")
         return True
     
-def get_latest_curriculum(checkpoint_dir: str = "checkpoints/"):
-    """Get the latest curriculum state file"""
+def get_latest_curriculum(checkpoint_dir: str = "checkpoints/") -> str | None:
+    """
+    Get the path to the latest saved curriculum state file.
+
+    :param checkpoint_dir: Directory containing curriculum state files.
+    :type checkpoint_dir: str
+    :returns: The file path of the latest curriculum state file, or None if none are found.
+    :rtype: str or None
+    """
     curriculum_files = glob.glob(os.path.join(checkpoint_dir, "curriculum_*_steps.pkl"))
     if not curriculum_files:
         return None
@@ -204,6 +302,9 @@ def get_latest_curriculum(checkpoint_dir: str = "checkpoints/"):
     return curriculum_files[-1]
 
 def main():
+    """
+    The main function to set up, resume, and run the Stable Baselines3 PPO training loop.
+    """
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, config_file)
     config = load_config(config_path)
@@ -216,7 +317,7 @@ def main():
 
     os.makedirs(checkpoint_dir, exist_ok=True)
 
-    # Save a copy of the config file to the checkpoint directory
+    # Save configuration files for archival
     shutil.copy(config_path, os.path.join(checkpoint_dir, "used_config.yaml"))
     print(f"[Config] Training configuration saved to {os.path.join(checkpoint_dir, 'used_config.yaml')}")
     
@@ -245,6 +346,7 @@ def main():
         curriculum = None
         print(f"[Curriculum] Curriculum learning is disabled - using fixed goal sampling.")
 
+    # Environment keyword arguments dictionary
     env_kwargs={
             "xml_file": config["env"]["xml_file"],
             "actuator_group": config["env"]["actuator_group"],
@@ -276,7 +378,9 @@ def main():
             "ensure_flat_spawn": config["env"].get("ensure_flat_spawn", True)
         }
 
+    # Setup Vectorized Environment
     if use_curriculum:
+        # Create environment instances with CurriculumWrapper
         env = SubprocVecEnv([
             make_curriculum_env(
                 env_kwargs=env_kwargs,
@@ -286,7 +390,7 @@ def main():
             for _ in range(config["env"]["n_envs"])
         ])
     else:
-        # Create standard vectorized environment without curriculum
+        # Create standard vectorized environment (TimeLimit is applied via wrapper_class)
         env = make_vec_env(
             HSAEnv,
             n_envs=config["env"]["n_envs"],
@@ -296,7 +400,7 @@ def main():
             wrapper_kwargs={"max_episode_steps": config["env"]["max_episode_steps"]},
         )
 
-    # Keep track of episode statistics
+    # Monitor wrapper to track episode statistics
     env = VecMonitor(env)
 
     # Normalize observations and rewards
@@ -326,20 +430,20 @@ def main():
             try:
                 trained_steps = extract_step_number(latest)
                 print(f"[Resume] Model has been trained for {trained_steps} steps.")
+                
+                # Load VecNormalize state
                 if latest_vecnorm:
                     print(f"[Resume] Loading VecNormalize stats from: {latest_vecnorm}")
                     env = VecNormalize.load(latest_vecnorm, env)
                 else:
-                    print(f"[Resume] WARNING: No VecNormalize stats found!")
-                    print(f"[Resume] Starting with fresh normalization stats.")
+                    print(f"[Resume] WARNING: No VecNormalize stats found! Starting with fresh normalization stats.")
 
+                # Load Curriculum state
                 if use_curriculum and latest_curriculum:
                     print(f"[Resume] Loading curriculum state from: {latest_curriculum}")
                     curriculum.load(latest_curriculum)
                 elif use_curriculum:
-                    print(f"[Resume] WARNING: No curriculum state found!")
-                    print(f"[Resume] Curriculum will start from initial settings.")
-                    print(f"[Resume] This may cause performance degradation!")
+                    print(f"[Resume] WARNING: No curriculum state found! Curriculum will start from initial settings. This may cause performance degradation!")
 
                 print(f"[Resume] Loading model ...")
                 model = PPO.load(latest, env=env, device='cpu')
@@ -353,6 +457,7 @@ def main():
             resume = False
 
     if use_curriculum:
+        # Display curriculum status
         print(f"\n{'='*60}")
         print(f"CURRICULUM LEARNING ENABLED")
         print(f"{'='*60}")
@@ -415,6 +520,7 @@ def main():
         timesteps_to_train = total_timesteps
         
 
+    # Setup Callbacks
     checkpoint_cb = CheckpointCallback(
         # Divide by number of envs because SB3 counts steps across all envs
         save_freq=checkpoint_freq // config["env"]["n_envs"],
@@ -439,7 +545,8 @@ def main():
 
     reward_cb = RewardComponentLogger()
     callbacks = CallbackList([checkpoint_cb, reward_cb, vecnorm_cb, curriculum_cb])
-    # Train the Model for a few timesteps
+    
+    # Train the Model
     model.learn(
         total_timesteps=timesteps_to_train,
         tb_log_name=config["train"]["run_name"],
@@ -447,7 +554,7 @@ def main():
         reset_num_timesteps=reset_timesteps
     )
 
-    # Save the trained model
+    # Final Save
     final_steps = trained_steps + timesteps_to_train
     print(f"[Info] Training complete. Total trained steps: {final_steps:,}")
     model.save(os.path.join(checkpoint_dir, 

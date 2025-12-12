@@ -122,6 +122,12 @@ class CustomMujocoEnv(gym.Env):
         self.width = width
         self.height = height
 
+        self.smooth_positions = smooth_positions
+        self.enable_terrain = enable_terrain
+        self.terrain_type = terrain_type
+        self.ensure_flat_spawn = ensure_flat_spawn
+
+
         # May use width and height
         self.model, self.data = self.initialize_simulation(actuator_group)
         self.update_goal_marker(goal_position=goal_position)
@@ -160,9 +166,7 @@ class CustomMujocoEnv(gym.Env):
             visual_options,
         )
 
-        self.smooth_positions = smooth_positions
-        self.enable_terrain = enable_terrain
-        self.terrain_type = terrain_type
+      
 
         self.unnorm_action_space_bounds = np.column_stack([
             self.action_unnorm_low.copy(),
@@ -174,8 +178,7 @@ class CustomMujocoEnv(gym.Env):
             self.actuator_high.copy(),
         ]).astype(np.float32)
 
-        self.ensure_flat_spawn = ensure_flat_spawn
-
+        
     def get_range_bounds(self, bound_group: list[int] = [1]) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
         """
         Extract the control range bounds from the MuJoCo model for specified actuator groups. It assumes 
