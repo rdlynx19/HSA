@@ -11,7 +11,7 @@ the simulation.
 """
 from torsional.controlAPI import MuJoCoControlInterface
 
-def main():
+def drive():
     """
     Initializes the MuJoCo simulation, attempts to execute a velocity-controlled 
     driving maneuver, and keeps the viewer open until interrupted.
@@ -47,4 +47,4 @@ def main():
         sim.close_simulation()
 
 if __name__ == "__main__":
-    main()
+    drive()

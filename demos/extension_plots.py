@@ -7,7 +7,7 @@ using position control. It specifically tracks and plots the trajectory of the r
 from torsional.controlAPI import MuJoCoControlInterface
 import matplotlib.pyplot as plt
 
-def main():
+def plot_crawl_trajectory():
     """
     Initializes the MuJoCo simulation, runs the continuous crawling demo in locked 
     position control mode, and plots the resulting distance between the robot's 
@@ -59,4 +59,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    plot_crawl_trajectory()

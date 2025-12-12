@@ -6,7 +6,7 @@ differential "bend left" motion, followed by a recovery contraction phase.
 """
 from torsional.controlAPI import MuJoCoControlInterface
 
-def main():
+def bend_left():
     """
     Initializes the MuJoCo simulation, performs a differential bend left maneuver, 
     and returns the robot to the idle state via contraction.
@@ -43,4 +43,4 @@ def main():
         
 
 if __name__ == "__main__":
-    main()
+    bend_left()

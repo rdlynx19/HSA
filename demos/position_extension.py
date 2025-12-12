@@ -7,7 +7,7 @@ contracting the body back to the neutral (zero) state.
 """
 from torsional.controlAPI import MuJoCoControlInterface
 import time
-def main():
+def extend_contract():
     """
     Initializes the MuJoCo simulation, performs a single full extension-contraction 
     cycle, and ensures clean shutdown.
@@ -46,4 +46,4 @@ def main():
         
 
 if __name__ == "__main__":
-    main()
+    extend_contract()

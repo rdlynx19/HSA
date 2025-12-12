@@ -12,7 +12,7 @@ from torsional.controlAPI import MuJoCoControlInterface
 import matplotlib.pyplot as plt
 import numpy as np
 
-def main():
+def crawl():
     """
     Initializes the MuJoCo simulation, runs the continuous crawling demo in the 
     unlocked mode, and plots the X-Y trajectories of all tracked bodies.
@@ -56,4 +56,4 @@ def main():
         sim.close_simulation()
 
 if __name__ == "__main__":
-    main()
+    crawl()

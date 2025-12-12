@@ -9,7 +9,7 @@ the performance of the physical robot.
 """
 from torsional.controlAPI import MuJoCoControlInterface
 
-def main():
+def twist2():
     """
     Initializes the MuJoCo simulation, performs a differential twist maneuver (Twist Type 1), 
     and keeps the viewer open until interrupted.
@@ -43,4 +43,4 @@ def main():
         
 
 if __name__ == "__main__":
-    main()
+    twist2()

@@ -8,7 +8,7 @@ model loading and simulation initialization.
 """
 from torsional.controlAPI import MuJoCoControlInterface, RobotState
 
-def main():
+def load_model():
     """
     Initializes the MuJoCo simulation interface with the specified XML model, 
     enables the position control actuator group (Group 1), and launches the 
@@ -36,4 +36,4 @@ def main():
         sim.close_simulation()
 
 if __name__ == "__main__":
-    main()
+    load_model()
