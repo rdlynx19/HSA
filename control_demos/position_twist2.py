@@ -1,5 +1,5 @@
 """
-Demo Script: Differential Twisting Locomotion (Twist Type 1).
+Demo Script: Differential Twisting Locomotion (Twist Type 2).
 
 This script demonstrates a differential "twist" maneuver using position control.
 
@@ -7,9 +7,9 @@ NOTE: Replicating the stability of complex, friction-driven gaits
 like this twisting motion in MuJoCo is challenging to match 
 the performance of the physical robot. 
 """
-from torsional.controlAPI import MuJoCoControlInterface
+from control_api.controlAPI import MuJoCoControlInterface
 
-def twist1():
+def twist2():
     """
     Initializes the MuJoCo simulation, performs a differential twist maneuver (Twist Type 1), 
     and keeps the viewer open until interrupted.
@@ -30,10 +30,10 @@ def twist1():
     try:
         sim.start_simulation()
         
-        # Phase 1: Twist Type 1
+        # Phase 1: Twist Type 2
         # This motion relies on specific constraint unlocking/locking implemented inside 
-        # position_control_twist1 to achieve lateral displacement.
-        sim.position_control_twist1(position=2.8, duration=5.00)
+        # position_control_twist2 to achieve lateral displacement.
+        sim.position_control_twist2(position=2.8, duration=5.00)
         
     except KeyboardInterrupt:
         print("Simulation interrupted by user.")
@@ -43,4 +43,4 @@ def twist1():
         
 
 if __name__ == "__main__":
-    twist1()
+    twist2()

@@ -8,7 +8,7 @@ Crucially, the script records the 2D (X-Y) world-space trajectory of the robot's
 tracked bodies throughout the simulation. The resulting path is plotted using Matplotlib 
 to visualize the efficiency and stability of the movement. 
 """
-from torsional.controlAPI import MuJoCoControlInterface
+from control_api.controlAPI import MuJoCoControlInterface
 import matplotlib.pyplot as plt
 import numpy as np
 

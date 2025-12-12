@@ -6,7 +6,7 @@ load a specified MuJoCo XML model, configure actuator groups, and launch the pas
 viewer using the `view_model` method. It is intended for quick verification of 
 model loading and simulation initialization.
 """
-from torsional.controlAPI import MuJoCoControlInterface, RobotState
+from control_api.controlAPI import MuJoCoControlInterface, RobotState
 
 def load_model():
     """

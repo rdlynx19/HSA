@@ -4,7 +4,7 @@ Demo Script: Crawling Trajectory Plot (Distance vs. Time).
 This script demonstrates the continuous crawling locomotion behavior of the HSA robot 
 using position control. It specifically tracks and plots the trajectory of the robot during this motion. 
 """
-from torsional.controlAPI import MuJoCoControlInterface
+from control_api.controlAPI import MuJoCoControlInterface
 import matplotlib.pyplot as plt
 
 def plot_crawl_trajectory():

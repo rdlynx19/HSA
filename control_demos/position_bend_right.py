@@ -4,7 +4,7 @@ Demo Script: Bending Locomotion (Bend Right).
 This script demonstrates a sequence involving position control to achieve a 
 differential "bend right" motion, followed by a recovery contraction phase. 
 """
-from torsional.controlAPI import MuJoCoControlInterface
+from control_api.controlAPI import MuJoCoControlInterface
 
 def bend_right():
     """

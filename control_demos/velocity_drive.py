@@ -9,7 +9,7 @@ NOTE: The velocity control feature is currently noted as not fully functional or
 stable, and may exhibit erratic behavior or fail to achieve sustained motion in 
 the simulation. 
 """
-from torsional.controlAPI import MuJoCoControlInterface
+from control_api.controlAPI import MuJoCoControlInterface
 
 def drive():
     """

@@ -5,7 +5,7 @@ This script executes the simplest complete motion sequence of the HSA robot:
 extending the body by actuating joints toward target positions, followed by 
 contracting the body back to the neutral (zero) state. 
 """
-from torsional.controlAPI import MuJoCoControlInterface
+from control_api.controlAPI import MuJoCoControlInterface
 import time
 def extend_contract():
     """
