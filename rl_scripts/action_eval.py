@@ -1,3 +1,14 @@
+"""
+PPO Model Evaluation and Feasibility Analysis Script.
+
+This module provides tools for loading a trained Stable Baselines3 (SB3) PPO model 
+and evaluating its performance in the HSAEnv. The core function, `analyze_actions`, 
+collects detailed time-series data on actions, joint positions, velocities, and 
+constraint violations across multiple evaluation episodes.
+
+The results are saved as image files (plots) to diagnose control feasibility, 
+action smoothness, and adherence to physical limits.
+"""
 import gymnasium as gym
 import numpy as np
 import yaml
@@ -7,10 +18,18 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from gymnasium.wrappers import TimeLimit
 from hsa_gym.envs.hsa_constrained import HSAEnv
+from numpy.typing import NDArray # Added NDArray import
 
 def extract_step_number(filepath: str) -> int:
     """
-    Extract the step number from a checkpoint filename.
+    Extract the step number (timestep count) from a checkpoint or stat filename.
+
+    The step number is assumed to be the largest sequence of digits found in the filename.
+
+    :param filepath: The full path of the checkpoint or stat file.
+    :type filepath: str
+    :returns: The extracted total timestep count, or 0 if no numbers are found.
+    :rtype: int
     """
     filename = os.path.basename(filepath)
     numbers = re.findall(r'\d+', filename)
@@ -18,16 +37,21 @@ def extract_step_number(filepath: str) -> int:
         return 0
     return int(max(numbers, key=int))
 
-def find_matching_vecnormalize(checkpoint_dir: str, model_path: str) -> str:
+def find_matching_vecnormalize(checkpoint_dir: str, model_path: str) -> str | None:
     """
-    Find the VecNormalize stats file that matches the model checkpoint.
-    
-    Args:
-        checkpoint_dir: Directory containing checkpoints
-        model_path: Path to model checkpoint
-    
-    Returns:
-        Path to matching VecNormalize file, or None if not found
+    Find the VecNormalize statistics file that corresponds to the loaded model checkpoint.
+
+    The search attempts to find:
+    1. An exact match based on the model's step number.
+    2. A generic 'vec_normalize_final.pkl' file.
+    3. The latest available VecNormalize file in the directory.
+
+    :param checkpoint_dir: Directory containing checkpoints and VecNormalize stats.
+    :type checkpoint_dir: str
+    :param model_path: Path to the model checkpoint file being loaded.
+    :type model_path: str
+    :returns: Path to the matching VecNormalize file, or None if not found.
+    :rtype: str or None
     """
     try:
         model_steps = extract_step_number(model_path)
@@ -59,13 +83,33 @@ def find_matching_vecnormalize(checkpoint_dir: str, model_path: str) -> str:
     return None
     
 
-def load_config(checkpoint_dir: str):
+def load_config(checkpoint_dir: str) -> dict:
+    """
+    Load the environment configuration used for the training run from the archived YAML file.
+
+    :param checkpoint_dir: Directory where the `used_config.yaml` file is stored.
+    :type checkpoint_dir: str
+    :returns: A dictionary containing the environment configuration.
+    :rtype: dict
+    """
     config_path = os.path.join(checkpoint_dir, "used_config.yaml")
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
     return config
 
-def make_env(config, render_mode="human"):
+def make_env(config: dict, render_mode: str = "human") -> gym.Wrapper:
+    """
+    Instantiate and wrap a single HSAEnv environment based on configuration parameters.
+
+    The environment is wrapped with :py:class:`gymnasium.wrappers.TimeLimit`.
+
+    :param config: The configuration dictionary loaded from `used_config.yaml`.
+    :type config: dict
+    :param render_mode: The rendering mode for the environment ("human" or "rgb_array").
+    :type render_mode: str
+    :returns: The wrapped environment instance ready for evaluation.
+    :rtype: gymnasium.Wrapper
+    """
     env_config = config["env"]
     env = HSAEnv(
         render_mode=render_mode,
@@ -87,23 +131,46 @@ def make_env(config, render_mode="human"):
         alive_bonus=env_config.get("alive_bonus", 0.0),
         goal_position=env_config.get("goal_position", None),
         distance_reward_weight=env_config.get("distance_reward_weight", 0.0),
+        ensure_flat_spawn=env_config.get("ensure_flat_spawn", True),
     )
     env = TimeLimit(env, max_episode_steps=env_config["max_episode_steps"])
-
-
     return env
 
-def wrapped_angle_diff(a, c):
+def wrapped_angle_diff(a: float, c: float) -> float:
     """
-    Calculate the wrapped angle difference.
+    Calculate the wrapped angle difference between two angles (a and c) to ensure 
+    the result is in the range $[-\pi, \pi]$ (and then returns the absolute value).
+    
+    :param a: The first angle in radians.
+    :type a: float
+    :param c: The second angle in radians.
+    :type c: float
+    :returns: The absolute wrapped difference in radians.
+    :rtype: float
     """
     raw_diff = a - c
     wrapped = np.arctan2(np.sin(raw_diff), np.cos(raw_diff))
     return abs(wrapped)
 
-def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
+def analyze_actions(checkpoint_dir: str, model_path: str, num_episodes: int = 5) -> None:
     """
-    Analyze and plot the action space usage during evaluation
+    Core function to evaluate a trained model and analyze its kinematic and control outputs.
+
+    This function runs the model over several episodes and collects time-series data for:
+    * Action distribution and smoothness (change).
+    * Actuated joint positions and velocities.
+    * Paired joint constraint difference.
+
+    It then generates and saves several diagnostic plots and prints summary statistics.
+
+    :param checkpoint_dir: Directory containing the model and configuration files.
+    :type checkpoint_dir: str
+    :param model_path: Path to the specific PPO model checkpoint (`.zip`) to load.
+    :type model_path: str
+    :param num_episodes: Number of episodes to run for data collection.
+    :type num_episodes: int
+    :returns: None
+    :rtype: None
     """
     print("Loading configuration and model...")
     config = load_config(checkpoint_dir)
@@ -120,6 +187,7 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
         env.training = False
         env.norm_reward = False
     else:
+        # Initialize VecNormalize even if no file is found, but disable normalization
         env = VecNormalize(env, training=False, norm_reward=False)
 
     model = PPO.load(model_path, env=env)
@@ -133,8 +201,8 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
     all_constraint_diffs = []
     
     actuator_names = ['1A', '2A', '3A', '4A', '1C', '2C', '3C', '4C']
-    qpos_indices = [7, 22, 10, 24, 20, 9, 21, 12]
-    qvel_indices = [6, 20, 9, 22, 18, 8, 19, 11]
+    qpos_indices = [7, 22, 10, 24, 20, 9, 21, 12] # Indices for qpos logging
+    qvel_indices = [6, 20, 9, 22, 18, 8, 19, 11] # Indices for qvel logging
     
     print(f"\nRunning {num_episodes} episodes to collect data...")
     
@@ -172,15 +240,13 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
                 joint_pos = [data.qpos[idx] for idx in qpos_indices]
                 joint_vel = [data.qvel[idx] for idx in qvel_indices]
                 
-                # Calculate constraint differences with CORRECT pairing and wrapping
-                # Order in joint_pos: [1A, 2A, 3A, 4A, 1C, 2C, 3C, 4C]
-                # Pairs: (0,4)=1A-1C, (1,5)=2A-2C, (2,6)=3A-3C, (3,7)=4A-4C
-
+                # Store data
                 episode_joint_pos.append(joint_pos)
                 episode_joint_vel.append(joint_vel)
                 
 
-                # Calculate constraint differences
+                # Calculate constraint differences (Absolute difference |A - C|)
+                # Order in joint_pos: [1A, 2A, 3A, 4A, 1C, 2C, 3C, 4C]
                 diffs = [
                     abs(joint_pos[0] - joint_pos[4]),  # 1A - 1C
                     abs(joint_pos[1] - joint_pos[5]),  # 2A - 2C
@@ -209,7 +275,7 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
     fig = plt.figure(figsize=(20, 12))
     
     # ============================================================
-    # 1. Action Distribution (Histograms)
+    # 1. Action Distribution (Histograms) 
     # ============================================================
     for i in range(8):
         ax = plt.subplot(4, 4, i+1)
@@ -227,7 +293,7 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
     plt.close()
     
     # ============================================================
-    # 2. Action Time Series
+    # 2. Action Time Series 
     # ============================================================
     fig, axes = plt.subplots(4, 2, figsize=(16, 12))
     fig.suptitle('Action Time Series', fontsize=16)
@@ -248,7 +314,7 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
     plt.close()
     
     # ============================================================
-    # 3. Action Change Magnitudes
+    # 3. Action Change Magnitudes 
     # ============================================================
     fig, axes = plt.subplots(4, 2, figsize=(16, 12))
     fig.suptitle('Action Change Magnitudes (Smoothness)', fontsize=16)
@@ -268,7 +334,7 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
     plt.close()
     
     # ============================================================
-    # 4. Joint Positions
+    # 4. Joint Positions 
     # ============================================================
     fig, axes = plt.subplots(4, 2, figsize=(16, 12))
     fig.suptitle('Joint Positions', fontsize=16)
@@ -289,7 +355,7 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
     plt.close()
     
     # ============================================================
-    # 5. Joint Velocities
+    # 5. Joint Velocities 
     # ============================================================
     fig, axes = plt.subplots(4, 2, figsize=(16, 12))
     fig.suptitle('Joint Velocities', fontsize=16)
@@ -310,7 +376,7 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
     plt.close()
     
     # ============================================================
-    # 6. Constraint Violations (|A - C| for each pair)
+    # 6. Constraint Violations (|A - C| for each pair) 
     # ============================================================
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     fig.suptitle('Constraint Monitoring: |A - C| per Pair', fontsize=16)
@@ -334,9 +400,7 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
     print("  Saved: constraint_violations.png")
     plt.close()
     
-    # ============================================================
     # 7. Summary Statistics
-    # ============================================================
     print("\n" + "="*60)
     print("FEASIBILITY ANALYSIS SUMMARY")
     print("="*60)
@@ -358,14 +422,6 @@ def analyze_actions(checkpoint_dir, model_path, num_episodes=5):
         mean_vel = np.mean(np.abs(all_joint_velocities[:, i]))
         print(f"  {actuator_names[i]:3s}: max={max_vel:6.2f}, mean={mean_vel:6.2f}")
     
-    print("\nConstraint Violations:")
-    for i in range(4):
-        max_diff = np.max(all_constraint_diffs[:, i])
-        violations = np.sum(all_constraint_diffs[:, i] > np.pi)
-        violation_pct = (violations / len(all_constraint_diffs)) * 100
-        print(f"  {pair_names[i]:15s}: max_diff={max_diff:.3f} rad, "
-              f"violations={violations} ({violation_pct:.2f}%)")
-    
     print("\n" + "="*60)
     
     env.close()
@@ -377,12 +433,13 @@ if __name__ == "__main__":
     # checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_random")
     # model_path = os.path.join(checkpoint_dir, "model_27000000_steps.zip")
 
-    # Demo 2 Craters
-    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_curriculum_craters_explore")
-    model_path = os.path.join(checkpoint_dir, "model_21000000_steps.zip")
+    # # Demo 2 Craters
+    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_curriculum_corridor")
+    model_path = os.path.join(checkpoint_dir, "model_27000000_steps.zip")
 
-    # Demo 3 Flat
-    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_curriculum_flat_small")
-    model_path = os.path.join(checkpoint_dir, "model_8000000_steps.zip")
+    # # # Demo 3 Flat
+    # checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_checkpoints_arranged_spiral")
+    # model_path = os.path.join(checkpoint_dir, "model_19000000_steps.zip")
 
-    analyze_actions(checkpoint_dir, model_path, num_episodes=2)
+
+    analyze_actions(checkpoint_dir, model_path, num_episodes=1)

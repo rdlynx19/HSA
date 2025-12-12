@@ -1,12 +1,46 @@
+"""
+Procedural Terrain Generation Utilities for MuJoCo Heightfields.
+
+This module provides various functions to generate 2D NumPy arrays representing 
+heightfields (terrains) for use in MuJoCo simulations. The array values correspond 
+to height, typically normalized or scaled relative to the maximum height defined 
+in the MuJoCo XML model.
+
+Functions include generation methods for:
+* Flat surfaces, inclines, and ramps.
+* Stochastic surfaces like Perlin noise and craters.
+* Structured environments like spiral tracks and corridors.
+
+The main entry point is `generate_terrain`, which dispatches to the specific 
+generation function based on the requested type.
+"""
 import numpy as np
 import noise
+from numpy.typing import NDArray 
 
-def ensure_flat_spawn_zone(terrain, 
-                           spawn_center_x  = 0.5, 
-                           spawn_center_y = 0.5, 
-                           spawn_radius = 0.0005):
+# --- Utility Functions ---
+
+def ensure_flat_spawn_zone(terrain: NDArray[np.float64], 
+                           spawn_center_x: float = 0.5, 
+                           spawn_center_y: float = 0.5, 
+                           spawn_radius: float = 0.15) -> NDArray[np.float64]:
     """
-    Ensure a flat area in the terrain for robot spawning
+    Ensure a flat area in the terrain for the robot's initial spawn location.
+
+    The function sets the height to 0.0 within a specified circular region and 
+    applies a smooth, linear blend transition zone around the perimeter to 
+    connect the flat area with the surrounding terrain. 
+
+    :param terrain: The input heightmap array.
+    :type terrain: NDArray[np.float64]
+    :param spawn_center_x: Center of the flat zone as a fraction (0.0 to 1.0) of the terrain width.
+    :type spawn_center_x: float
+    :param spawn_center_y: Center of the flat zone as a fraction (0.0 to 1.0) of the terrain height.
+    :type spawn_center_y: float
+    :param spawn_radius: Radius of the flat zone as a fraction of the terrain size.
+    :type spawn_radius: float
+    :returns: The modified heightmap array with the flat spawn zone.
+    :rtype: NDArray[np.float64]
     """
     width, height = terrain.shape
     
@@ -29,51 +63,106 @@ def ensure_flat_spawn_zone(terrain,
     return terrain
 
 
-# Terrain generation functions
-def generate_wavy_field(width, height, scale=0.5, amp=0.5):
+# --- Terrain Generation Functions ---
+
+def generate_wavy_field(width: int, height: int, scale: float = 0.5, amp: float = 0.5) -> NDArray[np.float64]:
+    """
+    Generate a terrain heightmap based on a 2D sine-cosine wave pattern.
+
+    :param width: Terrain grid width (number of cells).
+    :type width: int
+    :param height: Terrain grid height (number of cells).
+    :type height: int
+    :param scale: Controls the frequency/wavelength of the wave pattern.
+    :type scale: float
+    :param amp: Controls the amplitude (maximum height/depth) of the waves.
+    :type amp: float
+    :returns: The heightmap array.
+    :rtype: NDArray[np.float64]
+    """
     world = np.zeros((width, height))
     for i in range(width):
         for j in range(height):
             world[i][j] = amp * np.sin(scale*i) * np.cos(scale*j)
     return world
 
-def generate_perlin_noise(width, height, scale=0.1):
+def generate_perlin_noise(width: int, height: int, scale: float = 0.1) -> NDArray[np.float64]:
+    """
+    Generate a terrain heightmap using 2D Perlin noise for smooth, fractal features.
+
+    :param width: Terrain grid width (number of cells).
+    :type width: int
+    :param height: Terrain grid height (number of cells).
+    :type height: int
+    :param scale: Controls the density and scale of the noise features.
+    :type scale: float
+    :returns: The heightmap array.
+    :rtype: NDArray[np.float64]
+    """
     world = np.zeros((width, height))
     for i in range(width):
         for j in range(height):
             world[i][j] = noise.pnoise2(i*scale, j*scale, octaves=2)
     return world
 
-def generate_stairs_terrain(width, height, step_height=0.02, pixels_per_step=5):
-    """Generate staircase terrain"""
+def generate_stairs_terrain(width: int, height: int, step_height: float = 0.02, pixels_per_step: int = 5) -> NDArray[np.float64]:
+    """
+    Generate a terrain consisting of a straight staircase along the X-axis.
+
+    :param width: Terrain grid width (number of cells).
+    :type width: int
+    :param height: Terrain grid height (number of cells).
+    :type height: int
+    :param step_height: The change in height for each step/tread.
+    :type step_height: float
+    :param pixels_per_step: The number of grid cells (pixels) defining the length of each step.
+    :type pixels_per_step: int
+    :returns: The heightmap array.
+    :rtype: NDArray[np.float64]
+    """
     terrain = np.zeros((width, height))
     for i in range(width):
         terrain[i, :] = (i // pixels_per_step) * step_height
     return terrain
 
-def generate_flat_terrain(width, height):
-    """Generate flat terrain"""
+def generate_flat_terrain(width: int, height: int) -> NDArray[np.float64]:
+    """
+    Generate a completely flat terrain heightmap at zero height.
+
+    :param width: Terrain grid width (number of cells).
+    :type width: int
+    :param height: Terrain grid height (number of cells).
+    :type height: int
+    :returns: The heightmap array (all zeros).
+    :rtype: NDArray[np.float64]
+    """
     return np.zeros((width, height))
 
-def generate_flat_with_incline(width, height, 
-                               incline_start_x=0.3, incline_end_x=0.7,
-                               incline_start_y=0.3, incline_end_y=0.7,
-                               angle=15, direction='x'):
+def generate_flat_with_incline(width: int, height: int, 
+                               incline_start_x: float = 0.3, incline_end_x: float = 0.7,
+                               incline_start_y: float = 0.3, incline_end_y: float = 0.7,
+                               angle: float = 15, direction: str = 'x') -> NDArray[np.float64]:
     """
-    Generate flat terrain with a localized incline/ramp
-    
-    Args:
-        width: terrain grid width
-        height: terrain grid height
-        incline_start_x: start position of incline as fraction (0-1) along width
-        incline_end_x: end position of incline as fraction (0-1) along width
-        incline_start_y: start position of incline as fraction (0-1) along height
-        incline_end_y: end position of incline as fraction (0-1) along height
-        angle: slope angle in degrees
-        direction: 'x', 'y', or 'diagonal' - direction of slope within the incline region
-    
-    Returns:
-        terrain: height field array
+    Generate flat terrain with a localized incline or ramp created within a specified rectangular region.
+
+    :param width: Terrain grid width.
+    :type width: int
+    :param height: Terrain grid height.
+    :type height: int
+    :param incline_start_x: Starting X position of the incline region as a fraction (0-1).
+    :type incline_start_x: float
+    :param incline_end_x: Ending X position of the incline region as a fraction (0-1).
+    :type incline_end_x: float
+    :param incline_start_y: Starting Y position of the incline region as a fraction (0-1).
+    :type incline_start_y: float
+    :param incline_end_y: Ending Y position of the incline region as a fraction (0-1).
+    :type incline_end_y: float
+    :param angle: Slope angle in degrees.
+    :type angle: float
+    :param direction: Direction of the slope within the region: ``'x'``, ``'y'``, or ``'diagonal'``.
+    :type direction: str
+    :returns: The heightmap array with the ramp feature.
+    :rtype: NDArray[np.float64]
     """
     # Start with flat terrain
     terrain = np.zeros((width, height))
@@ -116,7 +205,21 @@ def generate_flat_with_incline(width, height,
     
     return terrain
 
-def generate_incline_terrain(width, height, angle=10, direction='x'):
+def generate_incline_terrain(width: int, height: int, angle: float = 10, direction: str = 'x') -> NDArray[np.float64]:
+    """
+    Generate a full-width terrain with a uniform slope across the entire grid.
+
+    :param width: Terrain grid width.
+    :type width: int
+    :param height: Terrain grid height.
+    :type height: int
+    :param angle: Slope angle in degrees.
+    :type angle: float
+    :param direction: Direction of the slope: ``'x'``, ``'y'``, or ``'diagonal'``.
+    :type direction: str
+    :returns: The heightmap array with the incline.
+    :rtype: NDArray[np.float64]
+    """
     terrain = np.zeros((width, height))
     slope = np.tan(np.radians(angle))
     
@@ -133,27 +236,34 @@ def generate_incline_terrain(width, height, angle=10, direction='x'):
     
     return terrain
 
-def generate_flat_with_ramp(width, height,
-                            ramp_center_x=0.5, ramp_center_y=0.5,
-                            ramp_length=0.3, ramp_width=0.3,
-                            ramp_height=0.2, direction='x',
-                            smooth_edges=True):
+def generate_flat_with_ramp(width: int, height: int,
+                            ramp_center_x: float = 0.5, ramp_center_y: float = 0.5,
+                            ramp_length: float = 0.3, ramp_width: float = 0.3,
+                            ramp_height: float = 0.2, direction: str = 'x',
+                            smooth_edges: bool = True) -> NDArray[np.float64]:
     """
-    Generate flat terrain with a smooth ramp at specified position
-    
-    Args:
-        width: terrain grid width
-        height: terrain grid height
-        ramp_center_x: center x position as fraction (0-1)
-        ramp_center_y: center y position as fraction (0-1)
-        ramp_length: length of ramp as fraction of terrain size
-        ramp_width: width of ramp as fraction of terrain size
-        ramp_height: maximum height of ramp (in height units)
-        direction: 'x' (ramp goes up in +x), '-x', 'y', '-y'
-        smooth_edges: if True, smooth the transition to flat terrain
-    
-    Returns:
-        terrain: height field array
+    Generate flat terrain with a smooth, localized ramp feature.
+
+    :param width: Terrain grid width.
+    :type width: int
+    :param height: Terrain grid height.
+    :type height: int
+    :param ramp_center_x: Center X position of the ramp as a fraction (0-1).
+    :type ramp_center_x: float
+    :param ramp_center_y: Center Y position of the ramp as a fraction (0-1).
+    :type ramp_center_y: float
+    :param ramp_length: Length of the ramp (distance over which height changes) as a fraction of terrain size.
+    :type ramp_length: float
+    :param ramp_width: Width of the ramp as a fraction of terrain size.
+    :type ramp_width: float
+    :param ramp_height: Maximum height of the ramp.
+    :type ramp_height: float
+    :param direction: Direction of the slope: ``'x'``, ``'-x'``, ``'y'``, or ``'-y'``.
+    :type direction: str
+    :param smooth_edges: If True, applies a smooth falloff along the ramp's width.
+    :type smooth_edges: bool
+    :returns: The heightmap array with the localized ramp.
+    :rtype: NDArray[np.float64]
     """
     # Start with flat terrain
     terrain = np.zeros((width, height))
@@ -224,20 +334,23 @@ def generate_flat_with_ramp(width, height,
     
     return terrain
 
-def generate_crater_terrain(width, height, num_craters=20, crater_radius_range=(2, 5), 
-                            crater_depth_range=(0.05, 0.15)):
+def generate_crater_terrain(width: int, height: int, num_craters: int = 20, crater_radius_range: tuple[int, int] = (2, 5), 
+                            crater_depth_range: tuple[float, float] = (0.05, 0.15)) -> NDArray[np.float64]:
     """
-    Generate terrain with random craters (small depressions)
-    
-    Args:
-        width: terrain grid width
-        height: terrain grid height
-        num_craters: number of craters to generate
-        crater_radius_range: tuple of (min_radius, max_radius) in grid units
-        crater_depth_range: tuple of (min_depth, max_depth) in height units
-    
-    Returns:
-        terrain: height field array with craters
+    Generate terrain with random craters (small, Gaussian-shaped depressions).
+
+    :param width: Terrain grid width.
+    :type width: int
+    :param height: Terrain grid height.
+    :type height: int
+    :param num_craters: Number of craters to generate.
+    :type num_craters: int
+    :param crater_radius_range: Tuple of (min_radius, max_radius) in grid units.
+    :type crater_radius_range: tuple[int, int]
+    :param crater_depth_range: Tuple of (min_depth, max_depth) in height units.
+    :type crater_depth_range: tuple[float, float]
+    :returns: The heightmap array with craters.
+    :rtype: NDArray[np.float64]
     """
     terrain = np.zeros((width, height))
     
@@ -263,21 +376,25 @@ def generate_crater_terrain(width, height, num_craters=20, crater_radius_range=(
     return terrain
 
 
-def generate_poles_terrain(width, height, num_poles=8, pole_radius_range=(3, 6), 
-                           pole_height_range=(0.3, 0.6), min_spacing=8):
+def generate_poles_terrain(width: int, height: int, num_poles: int = 8, pole_radius_range: tuple[int, int] = (3, 6), 
+                           pole_height_range: tuple[float, float] = (0.3, 0.6), min_spacing: int = 8) -> NDArray[np.float64]:
     """
-    Generate terrain with large cylindrical poles/pillars
-    
-    Args:
-        width: terrain grid width
-        height: terrain grid height
-        num_poles: number of poles to place
-        pole_radius_range: tuple of (min_radius, max_radius) in grid units
-        pole_height_range: tuple of (min_height, max_height)
-        min_spacing: minimum distance between pole centers
-    
-    Returns:
-        terrain: height field array with poles
+    Generate terrain with large cylindrical poles/pillars placed randomly with minimum spacing.
+
+    :param width: Terrain grid width.
+    :type width: int
+    :param height: Terrain grid height.
+    :type height: int
+    :param num_poles: Number of poles to place.
+    :type num_poles: int
+    :param pole_radius_range: Tuple of (min_radius, max_radius) in grid units.
+    :type pole_radius_range: tuple[int, int]
+    :param pole_height_range: Tuple of (min_height, max_height) in height units.
+    :type pole_height_range: tuple[float, float]
+    :param min_spacing: Minimum required distance (in grid cells) between pole centers.
+    :type min_spacing: int
+    :returns: The heightmap array with poles.
+    :rtype: NDArray[np.float64]
     """
     terrain = np.zeros((width, height))
     pole_positions = []
@@ -320,24 +437,214 @@ def generate_poles_terrain(width, height, num_poles=8, pole_radius_range=(3, 6),
     
     return terrain
 
-def generate_terrain(terrain_type, 
-                     width=50, 
-                     height=50, 
-                     ensure_flat_spawn=True, 
-                     **kwargs):
+def generate_corridor_terrain(width: int, height: int, 
+                              corridor_width: float = 0.85,
+                              corridor_axis: str = 'y',
+                              corridor_center: float = 0.5,
+                              wall_height: float = 0.5) -> NDArray[np.float64]:
     """
-    Generate terrain based on type
+    Generate flat terrain with thick walls creating a narrow corridor along a specified axis.
+
+    The method estimates the number of cells needed to match the requested ``corridor_width``
+    based on a fixed `WORLD_SIZE` of 10.0 meters.
+
+    :param width: Terrain grid width.
+    :type width: int
+    :param height: Terrain grid height.
+    :type height: int
+    :param corridor_width: Desired width of the corridor in meters (e.g., 0.85m).
+    :type corridor_width: float
+    :param corridor_axis: Axis along which the corridor extends (``'x'`` or ``'y'``). The walls run perpendicular to this axis.
+    :type corridor_axis: str
+    :param corridor_center: Center of the corridor as a fraction (0-1) of the terrain size across the axis perpendicular to the corridor.
+    :type corridor_center: float
+    :param wall_height: Height of the walls.
+    :type wall_height: float
+    :returns: The heightmap array with the corridor structure.
+    :rtype: NDArray[np.float64]
+    """
+    terrain = np.zeros((width, height))
     
-    Args:
-        terrain_type: 'wavy', 'perlin', 'stairs', 'flat', 'incline', 'craters', 'poles',
-                     'flat_with_incline', 'flat_with_ramp'
-        width: terrain grid width
-        height: terrain grid height
-        **kwargs: additional parameters for specific terrain types
+    WORLD_SIZE = 10.0
+    
+    if corridor_axis == 'y':
+        cell_size = WORLD_SIZE / width
+        
+        # Calculate cells needed
+        corridor_cells_float = corridor_width / cell_size
+        corridor_cells = max(1, int(np.round(corridor_cells_float)))
+        
+        center_i = int(corridor_center * width)
+        
+        # Define corridor boundaries
+        corridor_half_cells = corridor_cells // 2
+        start_i = max(0, center_i - corridor_half_cells)
+        end_i = min(width, center_i + corridor_half_cells + (corridor_cells % 2))
+        
+        # Fill with walls
+        terrain[:, :] = wall_height
+        
+        # Carve out corridor
+        terrain[start_i:end_i, :] = 0.0
+        
+        actual_cells = end_i - start_i
+        actual_width = actual_cells * cell_size
+        
+        print(f"[Corridor-Y] Request: {corridor_width:.2f}m → Actual: {actual_width:.2f}m ({actual_cells} cells)")
+        
+    elif corridor_axis == 'x':
+        cell_size = WORLD_SIZE / height
+        
+        corridor_cells_float = corridor_width / cell_size
+        corridor_cells = max(1, int(np.round(corridor_cells_float)))
+        
+        center_j = int(corridor_center * height)
+        
+        # Define corridor boundaries
+        corridor_half_cells = corridor_cells // 2
+        start_j = max(0, center_j - corridor_half_cells)
+        end_j = min(height, center_j + corridor_half_cells + (corridor_cells % 2))
+        
+        terrain[:, :] = wall_height
+        terrain[:, start_j:end_j] = 0.0
+        
+        actual_cells = end_j - start_j
+        actual_width = actual_cells * cell_size
+        
+        print(f"[Corridor-X] Request: {corridor_width:.2f}m → Actual: {actual_width:.2f}m ({actual_cells} cells)")
+    
+    else:
+        raise ValueError(f"corridor_axis must be 'x' or 'y', got: {corridor_axis}")
+    
+    return terrain
+
+def generate_spiral_track(width: int, height: int,
+                         start_radius: float = 0.5,
+                         end_radius: float = 4.0,
+                         num_turns: float = 2.0,
+                         track_width: float = 0.8,
+                         wall_height: float = 0.5) -> NDArray[np.float64]:
+    """
+    Generate a spiral track starting from the origin (center of the grid) and spiraling outward to the edge.
+
+    The path is carved out of high walls, leaving a flat, navigable track based on an 
+    Archimedean spiral ($r = a + b\theta$).
+
+    :param width: Grid width.
+    :type width: int
+    :param height: Grid height.
+    :type height: int
+    :param start_radius: Starting radius of the spiral in meters (inner radius).
+    :type start_radius: float
+    :param end_radius: Ending radius of the spiral in meters (outer edge).
+    :type end_radius: float
+    :param num_turns: Number of complete $360^\circ$ rotations the spiral makes.
+    :type num_turns: float
+    :param track_width: Width of the flat track region in meters.
+    :type track_width: float
+    :param wall_height: Height of the walls surrounding the track.
+    :type wall_height: float
+    :returns: The heightmap array with the spiral track structure.
+    :rtype: NDArray[np.float64]
+    """
+    terrain = np.zeros((width, height))
+    
+    WORLD_SIZE = 10.0
+    cell_size = WORLD_SIZE / width
+    
+    # Fill with walls
+    terrain[:, :] = wall_height
+    
+    # Track width parameters
+    half_width = track_width / 2
+    
+    # Grid center (corresponds to world origin 0, 0)
+    center_i = width // 2
+    center_j = height // 2
+    
+    # Total angle to cover
+    total_angle = 2 * np.pi * num_turns
+    
+    # For each grid cell, determine if it's on the spiral
+    for i in range(width):
+        for j in range(height):
+            # Convert to world coordinates (centered at origin)
+            x = (i - center_i) * cell_size
+            y = (j - center_j) * cell_size
+            
+            # Calculate polar coordinates from origin
+            r = np.sqrt(x**2 + y**2)
+            theta = np.arctan2(y, x)
+            
+            # Normalize angle to [0, 2π]
+            if theta < 0:
+                theta += 2 * np.pi
+            
+            # For each possible turn the spiral makes, check if point is on spiral
+            for turn_num in range(int(np.ceil(num_turns)) + 1):
+                # Angle with turn offset
+                angle = theta + (turn_num * 2 * np.pi)
+                
+                # Only consider angles within total spiral range
+                if angle > total_angle:
+                    continue
+                
+                # Calculate expected radius at this angle on the spiral
+                # r = start_radius + (end_radius - start_radius) * (angle / total_angle)
+                progress = angle / total_angle
+                expected_radius = start_radius + (end_radius - start_radius) * progress
+                
+                # Check if current point's radius matches expected radius (within track width)
+                if abs(r - expected_radius) <= half_width:
+                    terrain[i, j] = 0.0
+                    break  # Found valid spiral section
+    
+    # Calculate actual track width in cells
+    corridor_cells = max(1, int(np.round(track_width / cell_size)))
+    actual_width = corridor_cells * cell_size
+    
+    # Calculate approximate spiral length
+    avg_radius = (start_radius + end_radius) / 2
+    spiral_length = avg_radius * total_angle
+    
+    print(f"[Spiral Track] Origin→Outward, "
+          f"R: {start_radius:.1f}→{end_radius:.1f}m, "
+          f"Turns: {num_turns:.1f}, "
+          f"Width: {actual_width:.2f}m, "
+          f"Length: ~{spiral_length:.1f}m")
+    
+    return terrain
+
+def generate_terrain(terrain_type: str, 
+                     width: int = 50, 
+                     height: int = 50, 
+                     ensure_flat_spawn: bool = True, 
+                     **kwargs) -> NDArray[np.float64]:
+    """
+    Main entry function to dispatch terrain generation based on the type requested.
+
+    This function calls the appropriate generation helper and applies the 
+    `ensure_flat_spawn_zone` utility if required. 
+
+    :param terrain_type: Specifies the type of terrain to generate: ``'wavy'``, ``'perlin'``, ``'stairs'``, 
+        ``'flat'``, ``'incline'``, ``'craters'``, ``'poles'``, ``'flat_with_incline'``, 
+        ``'flat_with_ramp'``, ``'corridor'``, or ``'spiral'``.
+    :type terrain_type: str
+    :param width: Terrain grid width (number of cells).
+    :type width: int
+    :param height: Terrain grid height (number of cells).
+    :type height: int
+    :param ensure_flat_spawn: If True, calls :py:func:`~ensure_flat_spawn_zone` to flatten the center area.
+    :type ensure_flat_spawn: bool
+    :param kwargs: Additional keyword arguments passed to the specific terrain generation function (e.g., `angle`, `num_craters`).
+    :type kwargs: dict
+    :returns: The generated heightmap array.
+    :rtype: NDArray[np.float64]
+    :raises ValueError: If an unknown `terrain_type` is provided.
     """
     if terrain_type == 'wavy':
-        scale = kwargs.get('scale', 0.5)
-        amp = kwargs.get('amp', 0.5)
+        scale = kwargs.get('scale', 0.3)
+        amp = kwargs.get('amp', 0.15)
         terrain = generate_wavy_field(width, height, scale, amp)
 
     elif terrain_type == 'perlin':
@@ -345,7 +652,7 @@ def generate_terrain(terrain_type,
         terrain = generate_perlin_noise(width, height, scale)
 
     elif terrain_type == 'stairs':
-        step_height = kwargs.get('step_height', 0.02)
+        step_height = kwargs.get('step_height', 0.08)
         pixels_per_step = kwargs.get('pixels_per_step', 5)
         terrain = generate_stairs_terrain(width, height, step_height, pixels_per_step)
 
@@ -353,8 +660,8 @@ def generate_terrain(terrain_type,
         terrain = generate_flat_terrain(width, height)
 
     elif terrain_type == 'incline':
-        angle = kwargs.get('angle', 10)
-        direction = kwargs.get('direction', 'x')
+        angle = kwargs.get('angle', 20)
+        direction = kwargs.get('direction', 'y')
         terrain = generate_incline_terrain(width, height, angle, direction)
     
     elif terrain_type == 'flat_with_incline':
@@ -383,26 +690,50 @@ def generate_terrain(terrain_type,
                                       ramp_height, direction, smooth_edges)
     
     elif terrain_type == 'craters':
-        num_craters = kwargs.get('num_craters', 75)
+        num_craters = kwargs.get('num_craters', 25)
         crater_radius_range = kwargs.get('crater_radius_range', (3, 5))
-        crater_depth_range = kwargs.get('crater_depth_range', (0.15, 0.25))
+        crater_depth_range = kwargs.get('crater_depth_range', (0.10, 0.20))
         terrain = generate_crater_terrain(width, height, num_craters, 
                                       crater_radius_range, crater_depth_range)
     
     elif terrain_type == 'poles':
-        num_poles = kwargs.get('num_poles', 14)
-        pole_radius_range = kwargs.get('pole_radius_range', (3, 6))
-        pole_height_range = kwargs.get('pole_height_range', (0.9, 1.5))
-        min_spacing = kwargs.get('min_spacing', 12)
+        num_poles = kwargs.get('num_poles', 75)
+        pole_radius_range = kwargs.get('pole_radius_range', (1, 1))
+        pole_height_range = kwargs.get('pole_height_range', (1.5, 2.5))
+        min_spacing = kwargs.get('min_spacing', 3)
         terrain = generate_poles_terrain(width, height, num_poles, pole_radius_range,
                                      pole_height_range, min_spacing)
+    elif terrain_type == 'corridor':
+        corridor_width = kwargs.get('corridor_width', 0.60)
+        corridor_axis = kwargs.get('corridor_axis', 'y')
+        corridor_center = kwargs.get('corridor_center', 0.5)
+        wall_height = kwargs.get('wall_height', 0.5)
+        terrain = generate_corridor_terrain(width, height, corridor_width,
+                                            corridor_axis, corridor_center, wall_height)
+    
+    elif terrain_type == 'spiral':
+        start_radius = kwargs.get('start_radius', 0.5)
+        end_radius = kwargs.get('end_radius', 4.0)
+        num_turns = kwargs.get('num_turns', 2.0)
+        track_width = kwargs.get('track_width', 0.8)
+        wall_height = kwargs.get('wall_height', 0.5)
+        
+        terrain = generate_spiral_track(
+            width, height,
+            start_radius=start_radius,
+            end_radius=end_radius,
+            num_turns=num_turns,
+            track_width=track_width,
+            wall_height=wall_height
+        )
+
     else:
         raise ValueError(f"Unknown terrain type: {terrain_type}")
-    
+     
     if ensure_flat_spawn:
         spawn_center_x = kwargs.get('spawn_center_x', 0.5)
         spawn_center_y = kwargs.get('spawn_center_y', 0.5)
-        spawn_radius = kwargs.get('spawn_radius', 0.15)
+        spawn_radius = kwargs.get('spawn_radius', 0.085)
         terrain = ensure_flat_spawn_zone(terrain, 
                                          spawn_center_x, 
                                          spawn_center_y, 

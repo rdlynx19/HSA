@@ -1,16 +1,16 @@
 env:
-  xml_file: "hsaTerrainNoStiffModel.xml"
+  xml_file: "hsaLooseModel.xml"
   n_envs: 16
   frame_skip: 20
   actuator_group: [1]
   action_group: [1]
   # === REWARD STRUCTURE ===
   # Forward progress (not main objective)
-  forward_reward_weight: 6.0
+  forward_reward_weight: 15.0
 
   # Efficiency costs (minor - encourage good behaviour)
-  ctrl_cost_weight: 0.001
-  contact_cost_weight: 0.0005
+  ctrl_cost_weight: 0.00
+  contact_cost_weight: 0.000
   acc_cost_weight: 0.00001
 
   # Direction costs (moderate - enforce straight movement)
@@ -21,19 +21,30 @@ env:
   joint_vel_cost_weight: 0.0005
 
   # Goal achievement (primary - reach target position)
-  distance_reward_weight: 10.0
+  distance_reward_weight: 30.0
   # Stability/survival (critical - prevent early termination)
-  alive_bonus: 0.03 # (reward for staying alive each step)
+  alive_bonus: 0.0 # (reward for staying alive each step)
   early_termination_penalty: 0.1 # (big penalty for falling/failing)
+  stagnation_penalty_weight: 0.1  # Penalty for lack of progress
   smooth_positions: true
   max_increment: 0.1785
-  max_episode_steps: 4000
+  max_episode_steps: 8000
   enable_terrain: true
-  terrain_type: "craters"
+  terrain_type: "spiral"
   goal_position: [1.5, 0.0, 0.1]
 
+  num_turns: 2.0
+  start_radius: 0.5
+  end_radius: 4.0
+  num_checkpoints: 8
+  checkpoint_reward: 200.0
+  checkpoint_radius: 0.4
+
+  ensure_flat_spawn: true
+
+
 curriculum:
-  enabled: true  # Set to false to disable curriculum learning
+  enabled: false  # Set to false to disable curriculum learning
   initial_range: [1.5, 1.8]      # Start where your 27.5M model succeeded
   target_range: [1.5, 4.5]        # End at full arena size
   success_threshold: 0.75         # Expand when 75% of episodes succeed
@@ -47,17 +58,17 @@ model:
   policy: "MlpPolicy"
   n_steps: 1024
   batch_size: 64
-  learning_rate: 0.00001
+  learning_rate: 0.0001
   gamma: 0.99
   gae_lambda: 0.95
   clip_range: 0.2
-  ent_coef: 0.006
+  ent_coef: 0.015
 
 train:
-  total_timesteps: 100_000_000
+  total_timesteps: 200_000_000
   log_dir: "./logs/"
-  run_name: "ppo_curriculum_craters"
+  run_name: "ppo_checkpoints_arranged_spiral"
   checkpoint_dir: "./checkpoints/"
   checkpoint_freq: 500_000
-  resume: true
+  resume: false
   
