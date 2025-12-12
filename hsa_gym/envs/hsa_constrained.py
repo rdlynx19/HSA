@@ -423,9 +423,7 @@ class HSAEnv(CustomMujocoEnv):
     def acceleration_cost(self) -> float:
         """
         Compute the cost based on high joint accelerations (changes in velocity).
-        
-        Acceleration is calculated using a finite difference approximation over the environment timestep: 
-        $$\mathbf{a}_{\text{joint}} = \frac{\mathbf{v}_{\text{current}} - \mathbf{v}_{\text{prev}}}{\Delta t}$$
+        Acceleration is calculated using a finite difference approximation over the environment timestep 
         
         :returns: The weighted acceleration cost.
         :rtype: float

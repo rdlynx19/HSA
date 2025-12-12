@@ -159,7 +159,7 @@ def analyze_actions(checkpoint_dir: str, model_path: str, num_episodes: int = 5)
     This function runs the model over several episodes and collects time-series data for:
     * Action distribution and smoothness (change).
     * Actuated joint positions and velocities.
-    * Paired joint constraint difference (|A - C|).
+    * Paired joint constraint difference.
 
     It then generates and saves several diagnostic plots and prints summary statistics.
 
