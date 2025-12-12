@@ -1,3 +1,11 @@
+"""
+Base Module for custom Reinforcement Learning environment built with MuJoCo and Gymnasium.
+
+This module provides the core abstract class `CustomMujocoEnv` which handles 
+MuJoCo simulation setup, rendering, action space definition, and utility methods 
+for handling state, contact forces, and body positions. It is designed to be 
+subclassed for specific robotic tasks.
+"""
 from os import path
 
 import numpy as np
@@ -18,6 +26,7 @@ except ImportError as e:
 
 DEFAULT_SIZE = 1920 # Default rendering size
 
+# Helper function to expand model path
 def expand_model_path(model_path: str) -> str:
     """Expand the `model path` to a full path if it starts with '~' or '.' or '/'."""
     if model_path.startswith(".") or model_path.startswith("/"):
@@ -33,8 +42,6 @@ def expand_model_path(model_path: str) -> str:
 class CustomMujocoEnv(gym.Env):
     """
     Custom MuJoCo Environment base class.
-    
-    All member variables defined in this class should start with an underscore
     """
 
     def __init__(
@@ -54,31 +61,60 @@ class CustomMujocoEnv(gym.Env):
         action_group: list[int] = [1],
         smooth_positions: bool = True,
         enable_terrain: bool = False,
-        terrain_type: str = "craters",
+        terrain_type: str = "flat",
         goal_position: list[float] = [1.5, 0.0, 0.1],
         ensure_flat_spawn: bool = True,
     ):
         """
-        Base abstract class for MuJoCo based environments.
+        Initialize the custom MuJoCo environment and its core simulation components.
+
+        This method sets up the MuJoCo model, initializes data structures, defines the 
+        action space, and configures rendering and optional features like terrain 
+        generation and control smoothing.
 
         :param model_path: Path to the MuJoCo model XML file.
-        :param frame_skip: Number of simulation steps per gym `step()`
-        :param observation_space: Observation space of the environment
-        :param render_mode: The mode to render with. Supported modes are: "human", "rgb_array"
-        :param width: Width of the render window
-        :param height: Height of the render window
-        :param camera_id: Camera ID to use for rendering
-        :param camera_name: Camera name to use for rendering (cannot be used in conjunction with `camera_id`)
-        :param default_camera_config: Configuration for rendering camera
-        :param max_geom: Maximum number of rendered geometries
-        :param visual_options: render flag options
-        :param actuator_group: List of actuator group to enable
-        :param action_group: List of actuator group to include in action space
-        :param smooth_positions: Whether to smooth actuator position changes over frames
-        :param enable_terrain: Whether to enable terrain generation
-        :param terrain_type: Type of terrain to generate
-        :param goal_position: Position of the goal marker in the simulation
-        :param ensure_flat_spawn: Whether to ensure a flat spawn area in the terrain
+        :type model_path: str
+        :param frame_skip: Number of simulation steps the MuJoCo physics engine advances 
+            for every single call to the Gymnasium ``step()`` function.
+        :type frame_skip: int
+        :param observation_space: The observation space of the environment. If ``None``, 
+            it must be set by the subclass after calling ``super().__init__()``.
+        :type observation_space: gymnasium.spaces.Space or None
+        :param render_mode: The mode to render with. Supported modes are: ``"human"`` (for viewer) 
+            or ``"rgb_array"`` (for NumPy array output).
+        :type render_mode: str or None
+        :param width: Width of the render window/array in pixels. Defaults to :py:obj:`DEFAULT_SIZE`.
+        :type width: int
+        :param height: Height of the render window/array in pixels.
+        :type height: int
+        :param camera_id: Camera ID to use for rendering (cannot be used with ``camera_name``).
+        :type camera_id: int or None
+        :param camera_name: Camera name to use for rendering.
+        :type camera_name: str or None
+        :param default_camera_config: Configuration dictionary for the rendering camera 
+            (e.g., initial position, distance).
+        :type default_camera_config: dict[str, float or int] or None
+        :param max_geom: Maximum number of geometries to render.
+        :type max_geom: int
+        :param visual_options: Dictionary of MuJoCo render flag options.
+        :type visual_options: dict[int, bool]
+        :param actuator_group: List of MuJoCo actuator group IDs to explicitly enable 
+            control for in the simulation.
+        :type actuator_group: list[int]
+        :param action_group: List of actuator group IDs whose control ranges define 
+            the dimensionality and limits of the environment's action space.
+        :type action_group: list[int]
+        :param smooth_positions: Whether to linearly interpolate the control targets 
+            over the ``frame_skip`` steps (True) or apply the target instantly (False).
+        :type smooth_positions: bool
+        :param enable_terrain: Whether to enable procedural terrain generation upon model initialization.
+        :type enable_terrain: bool
+        :param terrain_type: The type of procedural terrain to generate (e.g., ``"craters"``, ``"spiral"``).
+        :type terrain_type: str
+        :param goal_position: The fixed 3D Cartesian position $[x, y, z]$ of the goal site/marker.
+        :type goal_position: list[float]
+        :param ensure_flat_spawn: Whether to flatten the terrain grid around the robot's initial spawn point.
+        :type ensure_flat_spawn: bool
         """
 
         self.fullpath = expand_model_path(model_path)
@@ -87,8 +123,8 @@ class CustomMujocoEnv(gym.Env):
         self.height = height
 
         # May use width and height
-        self.model, self.data = self._initialize_simulation(actuator_group)
-        self._update_goal_marker(goal_position=goal_position)
+        self.model, self.data = self.initialize_simulation(actuator_group)
+        self.update_goal_marker(goal_position=goal_position)
 
         self.init_qpos = self.data.qpos.ravel().copy()
         self.init_qvel = self.data.qvel.ravel().copy()
@@ -103,7 +139,7 @@ class CustomMujocoEnv(gym.Env):
         if observation_space is not None:
             self.observation_space = observation_space
         # Initialize action space
-        self._set_action_space(action_group=action_group,
+        self.set_action_space(action_group=action_group,
                                actuator_group=actuator_group)
 
         self.render_mode = render_mode
@@ -124,30 +160,31 @@ class CustomMujocoEnv(gym.Env):
             visual_options,
         )
 
-        self._smooth_positions = smooth_positions
+        self.smooth_positions = smooth_positions
         self.enable_terrain = enable_terrain
-        self._terrain_type = terrain_type
+        self.terrain_type = terrain_type
 
         self.unnorm_action_space_bounds = np.column_stack([
-            self._action_unnorm_low.copy(),
-            self._action_unnorm_high.copy(),
+            self.action_unnorm_low.copy(),
+            self.action_unnorm_high.copy(),
         ]).astype(np.float32)
 
         self.actuator_ctrlrange = np.column_stack([
-            self._actuator_low.copy(),
-            self._actuator_high.copy(),
+            self.actuator_low.copy(),
+            self.actuator_high.copy(),
         ]).astype(np.float32)
 
         self.ensure_flat_spawn = ensure_flat_spawn
 
-    def _get_range_bounds(self, 
-                          bound_group: list[int] = [1]
-                          ) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
+    def get_range_bounds(self, bound_group: list[int] = [1]) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
         """
-        Get the range bounds for the specified action/actuator group.
+        Extract the control range bounds from the MuJoCo model for specified actuator groups. It assumes 
+        a consistent grouping/indexing structure (8 actuators per group).
 
         :param bound_group: List of actuator/action group to get bounds for
-        :return: A tuple containing the lower and upper bounds
+        :type bound_group: list[int]
+        :return: A tuple containing the lower and upper bounds for the specified groups.
+        :rtype: tuple[NDArray[np.float32], NDArray[np.float32]]
         """
         bounds = self.model.actuator_ctrlrange.copy().astype(np.float32)
 
@@ -165,39 +202,58 @@ class CustomMujocoEnv(gym.Env):
         return bound_low, bound_high
 
 
-    def _set_action_space(self, 
-                          action_group: list[int] = [1],
-                          actuator_group: list[int] = [1]) -> spaces.Box:
+    def set_action_space(self, action_group: list[int] = [1], actuator_group: list[int] = [1]) -> spaces.Box:
         """
-        Set the action space of the environment.
+        Define the normalized Gymnasium action space and store unnormalized actuator bounds.
+
+        :param action_group: List of actuator group IDs whose control ranges define the 
+            dimensionality and limits of the unnormalized action space.
+        :type action_group: list[int]
+        :param actuator_group: List of actuator group IDs that are enabled and whose control 
+            limits should be stored internally for simulation control.
+        :type actuator_group: list[int]
+        :returns: The defined Gymnasium action space object (normalized Box).
+        :rtype: spaces.Box
         """
-        self._action_unnorm_low, self._action_unnorm_high = self._get_range_bounds(action_group)
+        self.action_unnorm_low, self.action_unnorm_high = self.get_range_bounds(action_group)
 
         # Action space for actuators
         self.action_space = spaces.Box(low=-1.0, 
                                        high=1.0,
-                                       shape=(self._action_unnorm_low.shape[0],),
+                                       shape=(self.action_unnorm_low.shape[0],),
                                        dtype=np.float32)
         
-        self._actuator_low, self._actuator_high = self._get_range_bounds(actuator_group)
+        self.actuator_low, self.actuator_high = self.get_range_bounds(actuator_group)
 
         return self.action_space        
     
 
-    def _initialize_simulation(self, 
-                               actuator_group: list[int] = [1],
-                               ) -> tuple[mujoco.MjModel, mujoco.MjData]:
+    def initialize_simulation(self, actuator_group: list[int] = [1]) -> tuple[mujoco.MjModel, mujoco.MjData]:
         """
-        Initialize MuJoCo simulation data structures `mjModel` and `mjData`. 
+        Initialize the MuJoCo simulation model and data structures.
 
-        :return: A tuple containing the MuJoCo model and data
+        This method handles several core setup tasks:
+        
+        1. Loads the MuJoCo model from the internal path (``self.fullpath``).
+        2. Configures the default off-screen rendering dimensions (width/height).
+        3. **Terrain Generation:** Optionally generates and applies procedural terrain 
+           data to the model's heightfield if ``self.enable_terrain`` is true.
+        4. **Actuator Enabling:** Iterates over ``actuator_group`` to explicitly enable 
+           control for the specified groups by clearing the MuJoCo disable flag.
+        5. Computes the initial forward dynamics via ``mujoco.mj_forward``.
+
+        :param actuator_group: List of MuJoCo actuator group IDs to enable for control.
+        :type actuator_group: list[int]
+        :returns: A tuple containing the initialized MuJoCo model (``MjModel``) and 
+            data (``MjData``) objects.
+        :rtype: tuple[mujoco.MjModel, mujoco.MjData]
         """
         model = mujoco.MjModel.from_xml_path(self.fullpath)
         model.vis.global_.offwidth = self.width
         model.vis.global_.offheight = self.height
-        if self._enable_terrain:
+        if self.enable_terrain:
             terrain_data = utils.generate_terrain(
-                terrain_type=self._terrain_type,
+                terrain_type=self.terrain_type,
                 width=model.hfield_nrow[0],
                 height=model.hfield_ncol[0],
                 ensure_flat_spawn=self.ensure_flat_spawn)
@@ -207,20 +263,21 @@ class CustomMujocoEnv(gym.Env):
         data = mujoco.MjData(model)
         mujoco.mj_forward(model, data)
       
-        # Enable only specified actuator groups
+        # Enable only specified actuator groups by clearing the disable bitmask
         for i in range(len(actuator_group)):
             model.opt.disableactuator &= ~(1 << actuator_group[i])
         return model, data
 
-    def _update_goal_marker(self, 
-                            goal_position: list[float] = [1.5, 0.0, 0.1],
-                            marker_name: str = "goal"
-                            ) -> None:
+    def update_goal_marker(self, goal_position: list[float] = [1.5, 0.0, 0.1], marker_name: str = "goal") -> None:
         """
-        Update the position of the goal marker in the simulation.
+        Update the Cartesian position of a specified MuJoCo site/marker in the model.
 
-        :param goal_position: Desired position of the goal marker
-        :param marker_name: Name of the marker in the MuJoCo model
+        :param goal_position: The desired $[x, y, z]$ coordinates (in meters) for the marker.
+        :type goal_position: list[float]
+        :param marker_name: The name of the MuJoCo site (marker) to update, as defined in the XML model.
+        :type marker_name: str
+        :returns: None
+        :rtype: None
         """
         marker_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, marker_name)
         if marker_id == -1:
@@ -232,10 +289,14 @@ class CustomMujocoEnv(gym.Env):
 
     def set_state(self, qpos: NDArray[np.float64], qvel: NDArray[np.float64]):
         """
-        Set the joints position qpos and velocity qvel of the model.
+        Set the joint positions (qpos) and joint velocities (qvel) of the MuJoCo model's state.
 
-        :param qpos: Joint position states
-        :param qvel: Joint velocity states
+        :param qpos: The full position state vector (dimension :py:attr:`self.model.nq`).
+        :type qpos: NDArray[np.float64]
+        :param qvel: The full velocity state vector (dimension :py:attr:`self.model.nv`).
+        :type qvel: NDArray[np.float64]
+        :returns: None
+        :rtype: None
         """
         assert qpos.shape == (self.model.nq,) and qvel.shape == (self.model.nv,)
         self.data.qpos[:] = np.copy(qpos)
@@ -244,19 +305,24 @@ class CustomMujocoEnv(gym.Env):
             self.data.act[:] = None
         mujoco.mj_forward(self.model, self.data)
 
-    
-    def _step_mujoco_simulation(self, 
-                                action: NDArray[np.float32],
-                                prev_action: NDArray[np.float32],
-                                frame_skip: int = 4,
-                                actuator_group: list[int] = [1]) -> None:
-        """
-        Step the MuJoCo simulation forward by `n_frames` steps using the provided control inputs and constraints.
 
-        :param action: Control inputs for the actuators
-        :param prev_action: Previous control inputs for smoothing (does not seem to be used)
-        :param frame_skip: Number of simulation frames to step
-        :param actuator_group: List of actuator group to control
+    def step_mujoco_simulation(self, action: NDArray[np.float32], frame_skip: int = 4, 
+                               actuator_group: list[int] = [1]) -> None:
+        """
+        Advance the MuJoCo simulation by ``frame_skip`` steps with control inputs.
+
+        Calculates the new control target (``new_targets``) by adding 
+        the input ``action`` (which is interpreted as an **increment** $\Delta u$) to 
+        the current control target (``self.data.ctrl``). If :py:attr:`self._smooth_positions` is True, the control target is linearly interpolated over the ``frame_skip`` simulation steps.
+        
+        :param action: The control input **increment** ($\Delta u$) for the active actuators.
+        :type action: NDArray[np.float32]
+        :param frame_skip: Number of simulation steps (frames) to advance per call.
+        :type frame_skip: int
+        :param actuator_group: List of actuator group IDs whose control targets will be updated.
+        :type actuator_group: list[int]
+        :returns: None
+        :rtype: None
         """
         # Compute indices of active actuators
         actuator = []
@@ -270,7 +336,7 @@ class CustomMujocoEnv(gym.Env):
         # Action represents the increment, so add it to current targets
         new_targets = current_targets + action
 
-        if self._smooth_positions:
+        if self.smooth_positions:
             for i in range(frame_skip):
                 alpha = (i + 1) / frame_skip
                 inter_targets = current_targets + alpha * (new_targets - current_targets)
@@ -287,42 +353,54 @@ class CustomMujocoEnv(gym.Env):
         """
         Render a frame from the MuJoCo simulation as specified by the render mode.
 
-        :return: Rendered frame
+        :returns: The rendered frame as a NumPy array (if ``render_mode='human'`` or ``render_mode='rgb_array'``) or 
+            ``None`` (if rendering is disabled).
+        :rtype: NDArray[np.uint8] or None
         """
         return self.mujoco_renderer.render(self.render_mode)
 
     def close(self) -> None:
         """
-        Close rendering contexts processes.
+        Close rendering contexts and release associated resources.
+
+        :returns: None
+        :rtype: None
         """
         if self.mujoco_renderer is not None:
             self.mujoco_renderer.close()
     
     def get_body_com(self, body_name: str) -> NDArray[np.float64]:
         """
-        Get the cartesian position of a body frame.
+        Get the Cartesian position (Center of Mass) of a specified body frame.
 
-        :param body_name: Name of the body
-        :return: Cartesian position of the body's COM
+        The position is returned in world coordinates and is accessed via the 
+        :py:attr:`self.data.body` accessor.
+
+        :param body_name: Name of the body (e.g., 'torso') as defined in the XML model.
+        :type body_name: str
+        :returns: The 3D Cartesian position $[x, y, z]$ of the body's CoM in the world frame.
+        :rtype: NDArray[np.float64]
         """
         return self.data.body(body_name).xpos
 
-    def reset(self, *, 
-              seed: int | None = None, 
-              options: dict | None = None) -> tuple[NDArray[np.float64], dict]:
+    def reset(self, *, seed: int | None = None, options: dict | None = None) -> tuple[NDArray[np.float64], dict]:
         """
         Reset the environment to an initial state and return an initial observation.
-
-        :param seed: Optional seed for the environment's random number generator
-        :param options: Optional dictionary of additional options for resetting the environment
-        :return: A tuple containing the initial observation and an info dictionary
+        This method follows the standard Gymnasium ``reset`` signature. 
+        
+        :param seed: Optional seed for the environment's random number generator.
+        :type seed: int or None
+        :param options: Optional dictionary of additional options for resetting the environment.
+        :type options: dict or None
+        :returns: A tuple containing the initial observation (state after reset) and an info dictionary.
+        :rtype: tuple[NDArray[np.float64], dict]
         """
         super().reset(seed=seed)
 
         mujoco.mj_resetData(self.model, self.data)
 
         ob = self.reset_model()
-        info = self._get_reset_info()
+        info = self.get_reset_info()
 
         if self.render_mode == "human":
             self.render()
@@ -331,40 +409,35 @@ class CustomMujocoEnv(gym.Env):
     @property
     def dt(self) -> float:
         """
-        Return the time step of the simulation.
+        Return the effective time step (duration) of one environment step.
 
-        :return: Time step of the simulation
+        :returns: The effective simulation time step in seconds.
+        :rtype: float
         """
         return self.model.opt.timestep * self.frame_skip
 
-    def do_simulation(self, 
-                      scaled_action: NDArray[np.float32], 
-                      prev_scaled_action: NDArray[np.float32],
-                      frame_skip: int = 4,
+    def do_simulation(self, scaled_action: NDArray[np.float32], frame_skip: int = 4, 
                       actuator_group: list[int] = [1]) -> None:
         """
-        Step the MuJoCo simulation forward by `frame_skip` steps using the provided control inputs.
+        Advance the MuJoCo simulation using an  unnormalized control input.
 
-        :param scaled_action: Control inputs for the actuators (scaled)
-        :param prev_scaled_action: Previous control inputs for smoothing
-        :param frame_skip: Number of simulation frames to step
-        :param actuator_group: List of actuator group to control
+        :param scaled_action: The scaled control input (increment) for the active actuators.
+        :type scaled_action: NDArray[np.float32]
+        :param frame_skip: Number of simulation frames to step..
+        :type frame_skip: int
+        :param actuator_group: List of actuator group IDs to apply control to.
+        :type actuator_group: list[int]
+        :returns: None
+        :rtype: None
         """
-        # alpha = 0.2
-        # smoothed_action = prev_action + alpha * (action - prev_action)
-        # smoothed_action = np.clip(smoothed_action, 
-        #                               self.action_space.low, 
-        #                               self.action_space.high)
-        self._step_mujoco_simulation(scaled_action, 
-                                     prev_scaled_action, 
-                                     frame_skip, 
-                                     actuator_group)
+        self.step_mujoco_simulation(scaled_action, frame_skip, actuator_group)
 
     def state_vector(self) -> NDArray[np.float64]:
         """
-        Return the position and velocity joint states of the model. 
-
-        :return: Concatenated position and velocity states
+        Return the full state vector of the MuJoCo model.
+        
+        :returns: The concatenated position and velocity state vector.
+        :rtype: NDArray[np.float64]
         """
         return np.concatenate([self.data.qpos.flat, self.data.qvel.flat])
     
@@ -373,9 +446,15 @@ class CustomMujocoEnv(gym.Env):
                           max_normal_force: float = 30.0
                         ) -> float:
         """
-        Get the contact force on a specified geometry.
-        :param geom_name: Name of the geometry
-        :return: Excessive contact force
+        Calculate the excessive contact force experienced by a specified geometry.
+
+        :param geom_name: Name of the MuJoCo geometry (``geom``) to check for contact force.
+        :type geom_name: str
+        :param max_normal_force: The maximum allowable contact force magnitude before it is 
+            considered "excessive" 
+        :type max_normal_force: float
+        :returns: The excessive force magnitude, defined as $\max(0.0, ||\mathbf{F}|| - \text{max\_normal\_force})$.
+        :rtype: float
         """
         geom_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, geom_name)
 
@@ -386,23 +465,38 @@ class CustomMujocoEnv(gym.Env):
         return excessive
 
     # methods to override:
-    def step(
-            self,
-            action: NDArray[np.float32]
-            ) -> tuple[NDArray[np.float64], np.float64, bool, bool,
+    def step(self,action: NDArray[np.float32]
+             ) -> tuple[NDArray[np.float64], np.float64, bool, bool,
                        dict[str, np.float64]]:
+        """
+        Advance the environment by one timestep using the provided action.
+
+        :param action: The normalized action vector supplied by the agent, typically in the range $[-1.0, 1.0]$.
+        :type action: NDArray[np.float32]
+        :returns: A tuple containing the next observation, the step reward, 
+            a terminated flag, a truncated flag, and an info dictionary.
+        :rtype: tuple[NDArray[np.float64], float, bool, bool, dict[str, np.float64]]
+        """
         raise NotImplementedError
     
     def reset_model(self) -> NDArray[np.float64]:
         """
-        Reset the robot degrees of freedom (qpos and qvel)
-        Implement this in each environment subclass
+        Set the task-specific initial state of the robot and return the initial observation.
+
+        :returns: The initial observation state of the environment.
+        :rtype: NDArray[np.float64]
         """
         raise NotImplementedError
     
-    def _get_reset_info(self) -> dict[str, np.float64]:
+    def get_reset_info(self) -> dict[str, np.float64]:
         """
-        Function that generates the `info` that is return during a 
-        `reset()`
+        Generate the initial ``info`` dictionary returned during a :py:meth:`~CustomMujocoEnv.reset`.
+
+        This helper method must be implemented by child environments to provide 
+        any task-specific information that is available immediately after the 
+        environment is reset (e.g., initial goal distance, initial velocity).
+
+        :returns: A dictionary containing initial state information.
+        :rtype: dict[str, np.float64]
         """
         return {}
