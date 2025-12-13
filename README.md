@@ -15,7 +15,7 @@ cd hsa
 ```
 
 2. Create and activate a virtual environment:
-```
+```bash
 # Python ≥ 3.12
 python3 -m venv venv
 
@@ -24,7 +24,7 @@ pip install -r requirements.txt
 ```
 
 3. Run the trained model
-```
+```bash
 python rl_scripts/action_eval.py [-h] [--demo {corridor, flat}] [--episodes EPISODES]
 
 Evaluate trained PPO models for HSA Robot Locomotion.
