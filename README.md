@@ -1,6 +1,8 @@
 # Emergent Locomotion in Handed Shearing Auxetic (HSA) Actuated Robot
 
 This project focused on modeling, simulating, and developing locomotion gaits for a soft-robotic module based on Handed Shearing Auxetic (HSA) actuators. The primary goal was to reproduce the physical module’s behavior in simulation, and then apply learning-based methods to discover novel and unintuitive gaits. This documentation contains the definition of the HSA Gym environment, the curriculum learning framework, terrain generation utilities, and reinforcement learning training and evaluation scripts. Additionally, it includes an interface using the MuJoCo API used for preliminary testing and demonstration of standard gaits.
+[Blog Post](https://pushkardave.com/hsa-rl)
+[Sphinx Documentation](https://pushkardave.com/HSA)
 
 ## QuickStart
 
