@@ -21,6 +21,8 @@ python3 -m venv venv
 
 # Install dependencies
 pip install -r requirements.txt
+
+export PYTHONPATH=$PYTHONPATH:$PWD
 ```
 
 3. Run the trained model
