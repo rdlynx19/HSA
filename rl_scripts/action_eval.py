@@ -18,7 +18,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from gymnasium.wrappers import TimeLimit
 from hsa_gym.envs.hsa_constrained import HSAEnv
-from numpy.typing import NDArray # Added NDArray import
+from numpy.typing import NDArray 
 
 def extract_step_number(filepath: str) -> int:
     """
@@ -136,22 +136,6 @@ def make_env(config: dict, render_mode: str = "human") -> gym.Wrapper:
     env = TimeLimit(env, max_episode_steps=env_config["max_episode_steps"])
     return env
 
-def wrapped_angle_diff(a: float, c: float) -> float:
-    """
-    Calculate the wrapped angle difference between two angles (a and c) to ensure 
-    the result is in the range $[-\pi, \pi]$ (and then returns the absolute value).
-    
-    :param a: The first angle in radians.
-    :type a: float
-    :param c: The second angle in radians.
-    :type c: float
-    :returns: The absolute wrapped difference in radians.
-    :rtype: float
-    """
-    raw_diff = a - c
-    wrapped = np.arctan2(np.sin(raw_diff), np.cos(raw_diff))
-    return abs(wrapped)
-
 def analyze_actions(checkpoint_dir: str, model_path: str, num_episodes: int = 5) -> None:
     """
     Core function to evaluate a trained model and analyze its kinematic and control outputs.
@@ -217,7 +201,7 @@ def analyze_actions(checkpoint_dir: str, model_path: str, num_episodes: int = 5)
         step_count = 0
 
         while not done:
-            action, _ = model.predict(obs, deterministic=True)
+            action, _ = model.predict(obs, deterministic=False)
             obs, reward, done_array, info = env.step(action)
             done = done_array[0]
             if done:
@@ -429,17 +413,13 @@ def analyze_actions(checkpoint_dir: str, model_path: str, num_episodes: int = 5)
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
-    # Demo 1 No Curriculum
-    # checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_random")
-    # model_path = os.path.join(checkpoint_dir, "model_27000000_steps.zip")
+    # # Demo 1 Corridor
+    checkpoint_dir = os.path.join(script_dir, "../models/ppo_curriculum_corridor")
+    model_path = os.path.join(checkpoint_dir, "model_29000000_steps.zip")
 
-    # # Demo 2 Craters
-    checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_curriculum_corridor")
-    model_path = os.path.join(checkpoint_dir, "model_27000000_steps.zip")
-
-    # # # Demo 3 Flat
-    # checkpoint_dir = os.path.join(script_dir, "../checkpoints/ppo_checkpoints_arranged_spiral")
-    # model_path = os.path.join(checkpoint_dir, "model_19000000_steps.zip")
+    # Demo 2 Flat
+    checkpoint_dir = os.path.join(script_dir, "../models/ppo_curriculum_flat_small")
+    model_path = os.path.join(checkpoint_dir, "ppo_curriculum_flat_small_final_100000000_steps.zip")
 
 
-    analyze_actions(checkpoint_dir, model_path, num_episodes=1)
+    analyze_actions(checkpoint_dir, model_path, num_episodes=2)

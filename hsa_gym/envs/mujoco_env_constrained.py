@@ -166,8 +166,6 @@ class CustomMujocoEnv(gym.Env):
             visual_options,
         )
 
-      
-
         self.unnorm_action_space_bounds = np.column_stack([
             self.action_unnorm_low.copy(),
             self.action_unnorm_high.copy(),
