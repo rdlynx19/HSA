@@ -12,7 +12,7 @@ action smoothness, and adherence to physical limits.
 import gymnasium as gym
 import numpy as np
 import yaml
-import os, re, glob
+import os, re, glob, argparse
 import matplotlib.pyplot as plt
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
@@ -411,15 +411,36 @@ def analyze_actions(checkpoint_dir: str, model_path: str, num_episodes: int = 5)
     env.close()
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Evaluate trained PPO models for HSA Robot Locomotion.")
+    parser.add_argument(
+        '--demo',
+        type=str,
+        choices=['corridor', 'flat'],
+        default='flat',
+        help='Select which demo model to evaluate: corridor or flat (default: flat)'
+    )
+
+    parser.add_argument(
+        '--episodes',
+        type=int,
+        default=2,
+        help='Number of episodes to run for evaluation (default: 2)'
+    )
+    args = parser.parse_args()
+
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     # # Demo 1 Corridor
-    checkpoint_dir = os.path.join(script_dir, "../models/ppo_curriculum_corridor")
-    model_path = os.path.join(checkpoint_dir, "model_29000000_steps.zip")
+    if args.demo == 'corridor':
+        print("Running Corridor Demo Evaluation...")
+        checkpoint_dir = os.path.join(script_dir, "../models/ppo_curriculum_corridor")
+        model_path = os.path.join(checkpoint_dir, "model_29000000_steps.zip")
 
     # Demo 2 Flat
-    checkpoint_dir = os.path.join(script_dir, "../models/ppo_curriculum_flat_small")
-    model_path = os.path.join(checkpoint_dir, "ppo_curriculum_flat_small_final_100000000_steps.zip")
+    elif args.demo == 'flat':
+        print("Running Flat Demo Evaluation...")
+        checkpoint_dir = os.path.join(script_dir, "../models/ppo_curriculum_flat_small")
+        model_path = os.path.join(checkpoint_dir, "ppo_curriculum_flat_small_final_100000000_steps.zip")
 
 
-    analyze_actions(checkpoint_dir, model_path, num_episodes=2)
+    analyze_actions(checkpoint_dir, model_path, num_episodes=args.episodes)

@@ -1,56 +1,55 @@
-# HSA Spring Actuation Locomotion in MuJoCo
+# Emergent Locomotion in Handed Shearing Auxetic (HSA) Actuated Robot
 
-This repository explores locomotion for an HSA model created with an arrangement of linear springs. It provides few varians of the simulation models and Python scripts to prototype and evaluate various gait strategies using MuJoCo.
-
-## Folder Structure
-```
-.
-├── torsional/                 # Torsional spring locomotion models and API
-│   ├── models/                # MuJoCo XML models
-│   ├── demos/                 # Predefined gait sequences and simulations
-│   └── controlAPI.py          # Helper API for controlling models
-├── demos_vids/                # Demo videos of different locomotion modes (outdated)
-├── requirements.txt           # Python dependencies
-├── setup.py                   # Package setup
-├── activate.sh                # Activate virtual environment
-├── deactivate.sh              # Deactivate virtual environment
-├── DevLog.md                  # Development notes and logs
-└── README.md
-
-```
+This project focused on modeling, simulating, and developing locomotion gaits for a soft-robotic module based on Handed Shearing Auxetic (HSA) actuators. The primary goal was to reproduce the physical module’s behavior in simulation, and then apply learning-based methods to discover novel and unintuitive gaits. This documentation contains the definition of the HSA Gym environment, the curriculum learning framework, terrain generation utilities, and reinforcement learning training and evaluation scripts. Additionally, it includes an interface using the MuJoCo API used for preliminary testing and demonstration of standard gaits.
 
 ## QuickStart
 
-### Clone the repository
+1. Clone the repository:
 ```bash
 git clone https://github.com/rdlynx19/hsa.git
 cd hsa
 ```
 
-### Create and activate virtual environment
+2. Create and activate a virtual environment:
 ```
-# Install and set Python version with pyenv (if not already done)
-pyenv install 3.10.4      
-pyenv virtualenv 3.10.4 hsa_venv
-pyenv activate hsa_venv
+# Python ≥ 3.12
+python3 -m venv venv
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
-### Running a Demo
+3. Run the trained model
 ```
-cd torsional
-python3 demos/<demo_name>
+python rl_scripts/action_eval.py [-h] [--demo {corridor, flat}] [--episodes EPISODES]
 
-Eg:
-python3 demos/velocity_drive.py
+Evaluate trained PPO models for HSA Robot Locomotion.
+
+options:
+  -h, --help            show this help message and exit
+  --demo {corridor,flat}
+                        Select which demo model to evaluate: corridor or flat (default: flat)
+  --episodes EPISODES   Number of episodes to run for evaluation (default: 2)
 ```
 
-## Customization
-- Edit XML models in `torsional/models/` to modify spring placements or parameters
-- Write demo scripts using the controlAPI in `torsional/controlAPI.py`
-
+## Project Structure
+```
+HSA/
+├── hsa_gym/                  # Custom Gymnasium environment for HSA robot
+│   └── envs/                 # Environment implementations
+├── models/                   # Pre-trained PPO models
+│   ├── ppo_curriculum_corridor/    # Corridor navigation (29M steps)
+│   └── ppo_curriculum_flat_small/  # Flat terrain (100M steps)
+├── rl_scripts/               # Training and evaluation scripts
+│   ├── action_eval.py        # Evaluate trained models
+│   └── ppo_curriculum.py     # Train with curriculum learning
+├── control_api/              # Low-level control interface
+├── control_demos/            # Control demonstrations
+├── util_scripts/             # Utility scripts
+├── tensorboard_logs/         # Training logs
+├── requirements.txt          # Python dependencies
+└── README.md
+```
 
 ## Credits 
-This work was developed as part of my final project for the MS in Robotics program at Northwestern University, under the guidance of Prof. Matt Elwin and Prof. Ryan Truby.
+This work was developed as part of my final project for the MS in Robotics program at Northwestern University, under the guidance of Prof. Matt Elwin, Prof. Ryan Truby and Dr. Taekyoung Kim.
