@@ -4,7 +4,7 @@ This project focused on modeling, simulating, and developing locomotion gaits fo
 
 [Portfolio Post](https://pushkardave.com/hsa-rl)
 
-[Sphinx Documentation](https://pushkardave.com/HSA)
+[Sphinx Documentation](https://pushkardave.com/EmergentHSALocomotion)
 
 ## QuickStart
 
