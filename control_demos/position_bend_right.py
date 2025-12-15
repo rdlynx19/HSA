@@ -16,7 +16,7 @@ def bend_right():
     :returns: None
     :rtype: None
     """
-    model_path = "torsional/models/closer_model.xml"
+    model_path = "control_api/models/closer_model.xml"
     sim = MuJoCoControlInterface(model_path=model_path)
 
     # Enable actuator group 1 (position control) and disable group 2 (velocity control)

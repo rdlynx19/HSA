@@ -23,7 +23,7 @@ def drive():
     :returns: None
     :rtype: None
     """
-    model_path = "torsional/models/closer_model.xml"
+    model_path = "control_api/models/closer_model.xml"
     sim = MuJoCoControlInterface(model_path=model_path)
     
     # Enable actuator group 2 (velocity control) and disable group 1 (position control)
